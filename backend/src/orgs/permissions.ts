@@ -15,11 +15,13 @@ export const PERMISSIONS = [
   'invite:read',
   'invite:create',
   'invite:revoke',
+  'customer:read',
+  'customer:write',
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
 
-const MEMBER: Permission[] = ['org:read', 'workspace:read', 'member:read']
+const MEMBER: Permission[] = ['org:read', 'workspace:read', 'member:read', 'customer:read']
 
 const ADMIN: Permission[] = [
   ...MEMBER,
@@ -30,6 +32,7 @@ const ADMIN: Permission[] = [
   'invite:read',
   'invite:create',
   'invite:revoke',
+  'customer:write',
 ]
 
 /**

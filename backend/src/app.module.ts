@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module'
 import { DomainExceptionFilter } from './common/domain-exception.filter'
 import { DatabaseHealth } from './database/database.health'
 import { DatabaseModule } from './database/database.module'
+import { CustomersModule } from './customers/customers.module'
 import { OrgsModule } from './orgs/orgs.module'
 import { UsersModule } from './users/users.module'
 import { HealthController } from './health/health.controller'
@@ -26,6 +27,7 @@ import { ReadyController } from './health/ready.controller'
     }),
     OrgsModule,
     UsersModule,
+    CustomersModule,
     AuthModule,
   ],
   controllers: [HealthController, ReadyController],

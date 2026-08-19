@@ -49,3 +49,24 @@ export type {
   Invitation,
   CreatedInvitation,
 } from './users'
+export {
+  CUSTOMER_STAGE_VALUES,
+  customerStageSchema,
+  createCustomerRequestSchema,
+  updateCustomerRequestSchema,
+  listCustomersQuerySchema,
+  createNoteRequestSchema,
+  customerSchema,
+  customerNoteSchema,
+  customerPageSchema,
+} from './customers'
+export type {
+  CustomerStage,
+  CreateCustomerRequest,
+  UpdateCustomerRequest,
+  ListCustomersQuery,
+  CreateNoteRequest,
+  Customer,
+  CustomerNote,
+  CustomerPage,
+} from './customers'

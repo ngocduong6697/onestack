@@ -181,6 +181,41 @@ POST  /users/me/password   current password required
 Changing a password revokes every other session and keeps the current one —
 which is the actual remedy once a session has been stolen.
 
+## Customers
+
+A lead and a customer are the same person at different moments, so there is one
+table with a stage: `lead`, `qualified`, `active`, `churned`. Converting is a
+stage change — no data is copied, and `converted_at` is stamped the first time
+somebody reaches `active` and never restamped, so a customer who churns and
+returns keeps the date they first joined.
+
+Records live in a workspace, which is a real boundary rather than a label:
+
+```
+POST   /orgs/{orgId}/workspaces/{workspaceId}/customers
+GET    .../customers?q=&stage=&cursor=&limit=
+GET    .../customers/{id}
+PATCH  .../customers/{id}
+DELETE .../customers/{id}
+POST   .../customers/{id}/notes
+GET    .../customers/{id}/notes
+```
+
+`WorkspaceGuard` runs after `OrgGuard` and proves the workspace belongs to the
+organization the caller was already admitted to — a workspace id on its own
+grants nothing.
+
+Pagination is keyset, not offset: UUIDv7 ids already sort by creation time, so
+`where id > cursor order by id` needs no extra column and page one thousand
+costs what page one costs. Search is escaped before it reaches `LIKE`, so
+searching for `%` finds a percent sign rather than every record.
+
+Money is `value_cents`, an integer of minor units. Never a float.
+
+Notes are append-only and cannot be edited or deleted — a timeline that can be
+rewritten is not a timeline. A note survives its author leaving, with a null
+author.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

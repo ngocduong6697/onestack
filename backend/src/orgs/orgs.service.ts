@@ -124,6 +124,17 @@ export class OrgsService {
     return rows.map(toWorkspace)
   }
 
+  /** Always filtered by organization, so an id alone is not a capability. */
+  async findWorkspace(organizationId: string, workspaceId: string): Promise<Workspace | null> {
+    const rows = await this.db
+      .select()
+      .from(workspaces)
+      .where(and(eq(workspaces.id, workspaceId), eq(workspaces.organizationId, organizationId)))
+      .limit(1)
+
+    return rows[0] ? toWorkspace(rows[0]) : null
+  }
+
   async createWorkspace(organizationId: string, input: CreateWorkspaceRequest): Promise<Workspace> {
     const slug = await this.freeWorkspaceSlug(organizationId, input.name)
 

@@ -11,7 +11,7 @@ spec ([templates/SPEC.md](templates/SPEC.md)) and passes both review gates
 | TASK-003 | Authentication           | 1 — Core         | TASK-002           | Done        |
 | TASK-004 | Organization / Workspace | 1 — Core         | TASK-003           | Done        |
 | TASK-005 | User management          | 1 — Core         | TASK-004           | Done        |
-| TASK-006 | Customer CRM             | 2 — Business     | TASK-005           | Not started |
+| TASK-006 | Customer CRM             | 2 — Business     | TASK-005           | Done        |
 | TASK-007 | Product management       | 2 — Business     | TASK-005           | Not started |
 | TASK-008 | Subscription             | 2 — Business     | TASK-006, TASK-007 | Not started |
 | TASK-009 | AI provider abstraction  | 3 — AI           | TASK-004           | Not started |

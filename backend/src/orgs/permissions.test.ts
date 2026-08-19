@@ -4,9 +4,21 @@ import { ROLES } from './roles'
 
 describe('permission map', () => {
   it('gives a member read access and nothing that writes', () => {
-    expect(permissionsFor('member')).toEqual(['org:read', 'workspace:read', 'member:read'])
+    expect(permissionsFor('member')).toEqual([
+      'org:read',
+      'workspace:read',
+      'member:read',
+      'customer:read',
+    ])
 
-    for (const permission of ['org:update', 'member:remove', 'invite:create'] as Permission[]) {
+    // Listed explicitly rather than derived, so widening a member's reach is
+    // a deliberate edit to this test and not a silent side effect.
+    for (const permission of [
+      'org:update',
+      'member:remove',
+      'invite:create',
+      'customer:write',
+    ] as Permission[]) {
       expect(can('member', permission)).toBe(false)
     }
   })
@@ -19,6 +31,7 @@ describe('permission map', () => {
       'member:remove',
       'invite:create',
       'invite:revoke',
+      'customer:write',
     ] as Permission[]) {
       expect(can('admin', permission)).toBe(true)
     }

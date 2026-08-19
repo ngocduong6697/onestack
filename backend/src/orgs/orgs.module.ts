@@ -5,6 +5,7 @@ import { InvitationsService } from './invitations.service'
 import { MembersController } from './members.controller'
 import { MembersService } from './members.service'
 import { OrgGuard } from './org.guard'
+import { WorkspaceGuard } from './workspace.guard'
 import { OrgsController } from './orgs.controller'
 import { OrgsService } from './orgs.service'
 import { WorkspacesController } from './workspaces.controller'
@@ -19,7 +20,7 @@ import { WorkspacesController } from './workspaces.controller'
     InvitationsController,
     AcceptInviteController,
   ],
-  providers: [OrgsService, MembersService, InvitationsService, OrgGuard],
-  exports: [OrgsService, MembersService, InvitationsService],
+  providers: [OrgsService, MembersService, InvitationsService, OrgGuard, WorkspaceGuard],
+  exports: [OrgsService, MembersService, InvitationsService, OrgGuard, WorkspaceGuard],
 })
 export class OrgsModule {}
