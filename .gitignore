@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+.yarn/
+
+# Builds
+.next/
+dist/
+out/
+*.tsbuildinfo
+
+# Environment — names live in .env.example, values never leave the machine
+.env
+.env.*
+!.env.example
+
+# Test output
+coverage/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

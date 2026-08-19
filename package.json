@@ -1,0 +1,33 @@
+{
+  "name": "onestack",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "yarn shared:build && yarn workspace @onestack/frontend dev",
+    "api:dev": "yarn shared:build && yarn workspace @onestack/backend dev",
+    "build": "yarn shared:build && yarn workspace @onestack/frontend build",
+    "api:build": "yarn shared:build && yarn workspace @onestack/backend build",
+    "start": "yarn workspace @onestack/frontend start",
+    "api:start": "yarn workspace @onestack/backend start",
+    "shared:build": "yarn workspace @onestack/shared build",
+    "typecheck": "yarn shared:build && yarn workspaces run typecheck",
+    "lint": "yarn workspace @onestack/frontend lint",
+    "test": "yarn shared:build && yarn workspaces run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=22"
+  }
+}
