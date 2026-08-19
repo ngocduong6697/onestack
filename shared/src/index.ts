@@ -31,3 +31,21 @@ export type {
   MembershipSummary,
   Workspace,
 } from './orgs'
+export {
+  updateProfileRequestSchema,
+  changePasswordRequestSchema,
+  memberSchema,
+  createInviteRequestSchema,
+  updateMemberRequestSchema,
+  invitationSchema,
+  createdInvitationSchema,
+} from './users'
+export type {
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  Member,
+  CreateInviteRequest,
+  UpdateMemberRequest,
+  Invitation,
+  CreatedInvitation,
+} from './users'

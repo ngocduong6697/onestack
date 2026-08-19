@@ -2,7 +2,13 @@ import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/com
 import { Reflector } from '@nestjs/core'
 import { ForbiddenError, NotFoundError, UnauthorizedError } from '../common/errors'
 import { REQUEST_USER } from '../auth/current-user.decorator'
-import { REQUEST_ORG, ROLE_METADATA, type RequestWithOrg } from './current-org.decorator'
+import {
+  PERMISSION_METADATA,
+  REQUEST_ORG,
+  ROLE_METADATA,
+  type RequestWithOrg,
+} from './current-org.decorator'
+import { can, type Permission } from './permissions'
 import { OrgsService } from './orgs.service'
 import { satisfies, type Role } from './roles'
 
@@ -40,14 +46,24 @@ export class OrgGuard implements CanActivate {
 
     if (!membership) throw new NotFoundError('Organization not found')
 
-    const required = this.reflector.getAllAndOverride<Role | undefined>(ROLE_METADATA, [
+    // Membership is established by this point, so a 403 from here leaks
+    // nothing an attacker did not already know.
+    const requiredRole = this.reflector.getAllAndOverride<Role | undefined>(ROLE_METADATA, [
       context.getHandler(),
       context.getClass(),
     ])
 
-    // Membership is established by this point, so 403 leaks nothing new.
-    if (required && !satisfies(membership.role, required)) {
-      throw new ForbiddenError(`This action requires the ${required} role`)
+    if (requiredRole && !satisfies(membership.role, requiredRole)) {
+      throw new ForbiddenError(`This action requires the ${requiredRole} role`)
+    }
+
+    const requiredPermission = this.reflector.getAllAndOverride<Permission | undefined>(
+      PERMISSION_METADATA,
+      [context.getHandler(), context.getClass()],
+    )
+
+    if (requiredPermission && !can(membership.role, requiredPermission)) {
+      throw new ForbiddenError(`This action requires the ${requiredPermission} permission`)
     }
 
     request[REQUEST_ORG] = membership

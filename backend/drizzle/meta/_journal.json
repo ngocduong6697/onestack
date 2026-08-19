@@ -15,6 +15,13 @@
       "when": 1787154197938,
       "tag": "0002_organizations_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787155076546,
+      "tag": "0003_invitations",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common'
 import type { Organization } from '@onestack/shared'
 import type { RequestWithUser } from '../auth/current-user.decorator'
+import type { Permission } from './permissions'
 import type { Role } from './roles'
 
 /** Set by OrgGuard; nothing else may write it. */
@@ -17,6 +18,7 @@ export interface RequestWithOrg extends RequestWithUser {
 }
 
 export const ROLE_METADATA = 'onestackRequiredRole'
+export const PERMISSION_METADATA = 'onestackRequiredPermission'
 
 /**
  * Declares the minimum role a route needs. Absent, the guard requires
@@ -24,6 +26,13 @@ export const ROLE_METADATA = 'onestackRequiredRole'
  * scoped route without OrgGuard is what raises.
  */
 export const RequireRole = (role: Role) => SetMetadata(ROLE_METADATA, role)
+
+/**
+ * Preferred over @RequireRole for anything new: a route says what it does, and
+ * which roles may do it lives in one map.
+ */
+export const RequirePermission = (permission: Permission) =>
+  SetMetadata(PERMISSION_METADATA, permission)
 
 export const CurrentOrg = createParamDecorator((_data: unknown, context: ExecutionContext) => {
   const request = context.switchToHttp().getRequest<RequestWithOrg>()

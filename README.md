@@ -134,6 +134,53 @@ exists, which is what someone walking through ids is trying to learn. Every
 workspace query filters on the organization as well as the id, so an id from
 another tenant finds nothing rather than finding a row.
 
+## People
+
+Roles map to named permissions in one place (`src/orgs/permissions.ts`), and
+routes ask for the permission rather than for a rank — so adding a role later
+is one edit instead of an audit of every controller.
+
+```ts
+@RequirePermission('member:remove')
+```
+
+Somebody joins by invitation. There is no email provider yet, so creating an
+invite returns the token once and you hand it over yourself; when a provider
+arrives, the same endpoint sends it.
+
+```
+POST   /orgs/{id}/invites          -> { token }  once, never again
+GET    /orgs/{id}/invites                        never includes tokens
+DELETE /orgs/{id}/invites/{id}
+POST   /invites/{token}/accept                   joins the caller
+GET    /orgs/{id}/members
+PATCH  /orgs/{id}/members/{userId}               change role
+DELETE /orgs/{id}/members/{userId}               remove, or leave
+```
+
+Invite tokens are 256-bit values stored as SHA-256, exactly like sessions, and
+are single-use with a seven-day life. Accepting binds to the caller's session,
+not to the address on the invitation.
+
+**The last owner is protected.** They cannot be demoted, removed, or leave —
+by anyone, including themselves. An organization with no owner has nobody who
+can appoint one.
+
+An admin holds the same permissions as an owner. What separates them is who
+they may act on: an admin cannot change an owner's role, grant the owner role,
+or invite an owner.
+
+## Your account
+
+```
+GET   /users/me
+PATCH /users/me            name only
+POST  /users/me/password   current password required
+```
+
+Changing a password revokes every other session and keeps the current one —
+which is the actual remedy once a session has been stolen.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |
