@@ -10,6 +10,7 @@ import type {
 } from '@onestack/shared'
 import { and, desc, eq, gt, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { ConflictError, NotFoundError } from '../common/errors'
+import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import {
@@ -212,9 +213,4 @@ export class CustomersService {
 
     return row
   }
-}
-
-/** 23505 is Postgres for unique_violation. */
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
 }

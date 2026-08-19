@@ -216,6 +216,37 @@ Notes are append-only and cannot be edited or deleted — a timeline that can be
 rewritten is not a timeline. A note survives its author leaving, with a null
 author.
 
+## Products
+
+A catalogue lives in a workspace, beside the customers who buy from it.
+
+```
+POST   /orgs/{orgId}/workspaces/{workspaceId}/products
+GET    .../products?q=&status=&cursor=&limit=
+GET    .../products/{id}                      includes its prices
+PATCH  .../products/{id}                      name, sku, description
+DELETE .../products/{id}                      only while it has no prices
+POST   .../products/{id}/archive
+POST   .../products/{id}/unarchive
+POST   .../products/{id}/prices
+GET    .../products/{id}/prices?active=true
+POST   .../products/{id}/prices/{priceId}/archive
+```
+
+**Prices are immutable.** Nothing changes an amount, a currency or an interval
+once a price exists — there is no route that can. Raising a price means adding
+a new one and archiving the old, so a subscription created against a price
+still describes what was agreed. That is also an integrity control: a
+compromised session can add a price or archive one, both of which leave a
+record, but cannot quietly rewrite what customers are charged.
+
+A product with prices cannot be deleted, only archived, so TASK-008's
+subscriptions can never point at a row that vanished. Archiving a product
+leaves its prices readable for exactly that reason.
+
+Amounts are integer minor units. Currency is a three-letter ISO 4217 code,
+uppercased on the way in so `usd` and `USD` cannot become two currencies.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

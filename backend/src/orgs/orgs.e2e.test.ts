@@ -30,6 +30,8 @@ describe.skipIf(!url)('organizations and workspaces over HTTP', () => {
     const header = response.headers['set-cookie'] as unknown as string[]
     const cookie = header.find((entry) => entry.startsWith(SESSION_COOKIE))!
     const orgs = await request(app.getHttpServer()).get('/orgs').set('Cookie', cookie)
+    expect(orgs.status).toBe(200)
+    expect(orgs.body.length).toBeGreaterThan(0)
 
     return { cookie, userId: response.body.id as string, org: orgs.body[0] }
   }

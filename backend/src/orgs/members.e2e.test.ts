@@ -30,6 +30,10 @@ describe.skipIf(!url)('members and invitations over HTTP', () => {
     const header = response.headers['set-cookie'] as unknown as string[]
     const cookie = header.find((entry) => entry.startsWith(SESSION_COOKIE))!
     const orgs = await http().get('/orgs').set('Cookie', cookie)
+    // Asserted here so a failed setup names itself, rather than surfacing as
+    // `undefined.id` further down and pointing at the wrong thing.
+    expect(orgs.status).toBe(200)
+    expect(orgs.body.length).toBeGreaterThan(0)
 
     return { cookie, userId: response.body.id as string, org: orgs.body[0] }
   }

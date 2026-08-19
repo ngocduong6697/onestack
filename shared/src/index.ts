@@ -70,3 +70,30 @@ export type {
   CustomerNote,
   CustomerPage,
 } from './customers'
+export {
+  PRODUCT_STATUS_VALUES,
+  PRICE_INTERVAL_VALUES,
+  productStatusSchema,
+  priceIntervalSchema,
+  currencySchema,
+  createProductRequestSchema,
+  updateProductRequestSchema,
+  createPriceRequestSchema,
+  listProductsQuerySchema,
+  productSchema,
+  productPriceSchema,
+  productWithPricesSchema,
+  productPageSchema,
+} from './products'
+export type {
+  ProductStatus,
+  PriceInterval,
+  CreateProductRequest,
+  UpdateProductRequest,
+  CreatePriceRequest,
+  ListProductsQuery,
+  Product,
+  ProductPrice,
+  ProductWithPrices,
+  ProductPage,
+} from './products'

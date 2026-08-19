@@ -3,6 +3,7 @@ import type { CreateInviteRequest, CreatedInvitation, Invitation } from '@onesta
 import { and, eq, isNull } from 'drizzle-orm'
 import { createSessionToken, hashSessionToken } from '../auth/tokens'
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/errors'
+import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import { invitations, memberships, type InvitationRow } from '../database/schema'
@@ -137,9 +138,4 @@ export class InvitationsService {
 
     return { organizationId: invitation.organizationId, role: invitation.role }
   }
-}
-
-/** 23505 is Postgres for unique_violation. */
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
 }

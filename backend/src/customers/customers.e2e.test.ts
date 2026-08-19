@@ -30,8 +30,14 @@ describe.skipIf(!url)('customers over HTTP', () => {
     const header = response.headers['set-cookie'] as unknown as string[]
     const cookie = header.find((entry) => entry.startsWith(SESSION_COOKIE))!
     const orgs = await http().get('/orgs').set('Cookie', cookie)
+    // Asserted here so a failed setup names itself, rather than surfacing as
+    // `undefined.id` further down and pointing at the wrong thing.
+    expect(orgs.status).toBe(200)
+    expect(orgs.body.length).toBeGreaterThan(0)
     const org = orgs.body[0]
     const spaces = await http().get(`/orgs/${org.id}/workspaces`).set('Cookie', cookie)
+    expect(spaces.status).toBe(200)
+    expect(spaces.body.length).toBeGreaterThan(0)
 
     return {
       cookie,

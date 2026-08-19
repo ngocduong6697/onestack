@@ -1,5 +1,5 @@
 import { Injectable, type PipeTransform } from '@nestjs/common'
-import type { ZodSchema } from 'zod'
+import type { ZodType, ZodTypeDef } from 'zod'
 import { ValidationError } from './errors'
 
 /**
@@ -9,7 +9,12 @@ import { ValidationError } from './errors'
  */
 @Injectable()
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
-  constructor(private readonly schema: ZodSchema<T>) {}
+  /**
+   * The input side is `unknown` on purpose. A schema that transforms — coercing
+   * a query string to a number, uppercasing a currency — has a different input
+   * type from its output, and ZodSchema<T> would require them to match.
+   */
+  constructor(private readonly schema: ZodType<T, ZodTypeDef, unknown>) {}
 
   transform(value: unknown): T {
     const result = this.schema.safeParse(value)

@@ -3,6 +3,7 @@ import { OrgsService } from '../orgs/orgs.service'
 import type { LoginRequest, PublicUser, RegisterRequest } from '@onestack/shared'
 import { and, eq, gt, lt, sql } from 'drizzle-orm'
 import { ConflictError, UnauthorizedError } from '../common/errors'
+import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import { sessions, users, type UserRow } from '../database/schema'
@@ -167,9 +168,4 @@ export class AuthService {
 
     await this.db.update(sessions).set({ lastSeenAt: new Date() }).where(eq(sessions.id, sessionId))
   }
-}
-
-/** 23505 is Postgres for unique_violation. */
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
 }

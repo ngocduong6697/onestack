@@ -7,6 +7,7 @@ import { DatabaseHealth } from './database/database.health'
 import { DatabaseModule } from './database/database.module'
 import { CustomersModule } from './customers/customers.module'
 import { OrgsModule } from './orgs/orgs.module'
+import { ProductsModule } from './products/products.module'
 import { UsersModule } from './users/users.module'
 import { HealthController } from './health/health.controller'
 import { ReadyController } from './health/ready.controller'
@@ -28,6 +29,7 @@ import { ReadyController } from './health/ready.controller'
     OrgsModule,
     UsersModule,
     CustomersModule,
+    ProductsModule,
     AuthModule,
   ],
   controllers: [HealthController, ReadyController],
