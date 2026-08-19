@@ -61,6 +61,7 @@ both a missing `DATABASE_URL` and an out-of-range `API_PORT`;
 `POSTGRES_PASSWORD`.
 
 **4. Any known limitations?**
+
 - `docker compose up --build` was **not** run: no Docker daemon on this
   machine. Compose config is valid and the Dockerfile COPY paths were checked
   against the real `.next/standalone` layout, but the images are unbuilt and
@@ -73,6 +74,7 @@ both a missing `DATABASE_URL` and an out-of-range `API_PORT`;
   threaded through the Next bootstrap.
 
 **5. Any technical debt?**
+
 - No `/ready`, no request-id correlation, no structured JSON log transport —
   Nest's default console logger is human-formatted. Phase 6 (observability)
   should replace it.
@@ -84,6 +86,7 @@ both a missing `DATABASE_URL` and an out-of-range `API_PORT`;
 
 **6. Does this follow CLAUDE.md?**
 Yes, with the rules that apply at this stage:
+
 - Rule 1 — architecture approved before any code was written.
 - Rule 2 — every dependency mirrors the sibling project's proven set; the only
   judgement calls are `helmet` (rule 5) and `zod` (rule 6), both mandated.
@@ -95,5 +98,5 @@ Yes, with the rules that apply at this stage:
 - Rule 6 — validation infrastructure (zod + `parseEnv`) is in place; `/health`
   takes no input.
 - Rule 10 — every module added ships with a test.
-Rules 7, 8 and 9 (audit, AI cost, migrations) have nothing to bind to yet and
-land in TASK-014, TASK-010 and TASK-002.
+  Rules 7, 8 and 9 (audit, AI cost, migrations) have nothing to bind to yet and
+  land in TASK-014, TASK-010 and TASK-002.

@@ -12,6 +12,27 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    # Without a real database the integration tests skip, and a skipped test
+    # that nobody notices is worse than no test at all.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: onestack
+          POSTGRES_PASSWORD: onestack
+          POSTGRES_DB: onestack_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://onestack:onestack@localhost:5432/onestack_test
+
     steps:
       - uses: actions/checkout@v4
 

@@ -10,6 +10,13 @@ const envSchema = z.object({
    */
   DATABASE_URL: z.string().url(),
   CORS_ORIGINS: csvSchema.default('http://localhost:3000'),
+  /** Pool ceiling. One person's traffic does not need more than this. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
+  /** Seconds an idle connection is kept before being returned to the system. */
+  DATABASE_IDLE_TIMEOUT: z.coerce.number().int().min(1).default(30),
+  /** Seconds to wait for a connection before failing, so a dead database
+   * fails fast instead of hanging a request. */
+  DATABASE_CONNECT_TIMEOUT: z.coerce.number().int().min(1).default(10),
   LOG_LEVEL: logLevelSchema.default('info'),
 })
 

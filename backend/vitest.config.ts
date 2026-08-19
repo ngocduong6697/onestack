@@ -6,6 +6,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Integration tests share one database; parallel files would fight.
+    fileParallelism: false,
   },
   // Nest leans on decorator metadata, which esbuild does not emit. swc does.
   plugins: [swc.vite({ module: { type: 'es6' } })],

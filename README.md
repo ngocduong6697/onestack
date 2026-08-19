@@ -36,6 +36,45 @@ naming any variable that is missing or malformed.
 | `yarn test`                     | Vitest across every workspace        |
 | `yarn format`                   | Prettier write                       |
 
+## Database
+
+Migrations live in `backend/drizzle/`, one `.sql` forward file and one
+`.down.sql` beside it. The pairing is enforced by a test, not a habit: a
+migration without a way back fails CI.
+
+```bash
+yarn workspace @onestack/backend db:generate   # drizzle-kit writes the up SQL
+yarn workspace @onestack/backend db:status     # applied vs pending
+yarn workspace @onestack/backend db:migrate    # apply pending
+yarn workspace @onestack/backend db:rollback   # revert the last one
+```
+
+Migrations never run at boot. A rolling deploy that half-migrates under load
+is worse than one that waits for a deliberate command.
+
+Conventions every table inherits from `src/database/schema/columns.ts`:
+UUIDv7 primary keys generated in the application, `timestamptz` for
+`created_at` and `updated_at`, snake_case throughout.
+
+Integration tests need a throwaway database — they drop the `public` schema:
+
+```bash
+createdb onestack_test
+TEST_DATABASE_URL=postgres://$USER@localhost:5432/onestack_test yarn test
+```
+
+Without `TEST_DATABASE_URL` they skip and say so, rather than passing quietly.
+
+## Health
+
+| Endpoint      | Answers                  | Fails when                  |
+| ------------- | ------------------------ | --------------------------- |
+| `GET /health` | Is the process alive     | The process is broken       |
+| `GET /ready`  | Should traffic come here | The database is unreachable |
+
+They are separate on purpose: a database blip must not make the orchestrator
+restart a perfectly healthy container.
+
 ## Containers
 
 ```bash

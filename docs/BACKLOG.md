@@ -6,8 +6,8 @@ spec ([templates/SPEC.md](templates/SPEC.md)) and passes both review gates
 
 | ID       | Task                     | Phase            | Depends on         | Status      |
 | -------- | ------------------------ | ---------------- | ------------------ | ----------- |
-| TASK-001 | Project foundation       | 0 — Foundation   | —                  | Not started |
-| TASK-002 | Database architecture    | 0 — Foundation   | TASK-001           | Not started |
+| TASK-001 | Project foundation       | 0 — Foundation   | —                  | Done        |
+| TASK-002 | Database architecture    | 0 — Foundation   | TASK-001           | Done        |
 | TASK-003 | Authentication           | 1 — Core         | TASK-002           | Not started |
 | TASK-004 | Organization / Workspace | 1 — Core         | TASK-003           | Not started |
 | TASK-005 | User management          | 1 — Core         | TASK-004           | Not started |

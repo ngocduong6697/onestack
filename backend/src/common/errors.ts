@@ -37,3 +37,8 @@ export class ConflictError extends DomainError {
   readonly status = 409
   readonly code = 'conflict'
 }
+
+export class ServiceUnavailableError extends DomainError {
+  readonly status = 503
+  readonly code = 'service_unavailable'
+}
