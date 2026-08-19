@@ -94,6 +94,46 @@ The guard is opt-in. A global one would silently require a session on routes
 that are not ready for it — including the probes, which must answer during an
 outage.
 
+## Organizations and workspaces
+
+An organization is the tenant and the billing unit; workspaces subdivide its
+data. Membership is at the organization level, with a role of `owner`, `admin`
+or `member` — ranked, so a check reads as "admin or above". Registering creates
+a personal organization and a `General` workspace, so nobody arrives with
+nowhere to put anything.
+
+The organization is named in the path, which keeps two browser tabs on two
+organizations from bleeding into each other:
+
+```
+GET   /orgs                          organizations you belong to
+POST  /orgs
+GET   /orgs/{orgId}
+PATCH /orgs/{orgId}                  admin or above
+GET   /orgs/{orgId}/workspaces
+POST  /orgs/{orgId}/workspaces       admin or above
+PATCH /orgs/{orgId}/workspaces/{id}  admin or above
+DELETE /orgs/{orgId}/workspaces/{id} admin or above
+```
+
+Scoping a new route:
+
+```ts
+@Controller('orgs/:orgId/customers')
+@UseGuards(SessionGuard, OrgGuard)
+export class CustomersController {
+  @Get()
+  list(@CurrentOrg() org: OrgContext) {
+    return this.db.select().from(customers).where(eq(customers.organizationId, org.organization.id))
+  }
+}
+```
+
+**A non-member gets 404, never 403.** A 403 would confirm the organization
+exists, which is what someone walking through ids is trying to learn. Every
+workspace query filters on the organization as well as the id, so an id from
+another tenant finds nothing rather than finding a row.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

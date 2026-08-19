@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
+import { OrgsService } from '../orgs/orgs.service'
 import type { LoginRequest, PublicUser, RegisterRequest } from '@onestack/shared'
 import { and, eq, gt, lt, sql } from 'drizzle-orm'
 import { ConflictError, UnauthorizedError } from '../common/errors'
@@ -7,6 +8,9 @@ import { DATABASE } from '../database/database.module'
 import { sessions, users, type UserRow } from '../database/schema'
 import { burnTimeLikeAVerify, hashPassword, verifyPassword } from './password'
 import { createSessionToken, hashSessionToken } from './tokens'
+
+/** A transaction or the pool — anything these writes can run on. */
+type Executor = Database | Parameters<Parameters<Database['transaction']>[0]>[0]
 
 export interface AuthenticatedSession {
   user: PublicUser
@@ -37,32 +41,47 @@ export function toPublicUser(row: UserRow): PublicUser {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name)
 
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly orgs: OrgsService,
+  ) {}
 
+  /**
+   * Creates the account, its organization and its first workspace as one unit.
+   * Nobody should log in for the first time with nowhere to put anything, and
+   * a half-built tenant is worse than a failed request — so this is one
+   * transaction, and the session row is inside it too.
+   */
   async register(input: RegisterRequest, userAgent?: string): Promise<AuthenticatedSession> {
     const passwordHash = await hashPassword(input.password)
 
-    let created: UserRow
+    const session = await this.db.transaction(async (tx) => {
+      let created: UserRow
 
-    try {
-      const rows = await this.db
-        .insert(users)
-        .values({ email: input.email, passwordHash, name: input.name })
-        .returning()
+      try {
+        const rows = await tx
+          .insert(users)
+          .values({ email: input.email, passwordHash, name: input.name })
+          .returning()
 
-      created = rows[0]!
-    } catch (error) {
-      // The unique index is the authority on duplicates. Checking first and
-      // inserting after would still race; this cannot.
-      if (isUniqueViolation(error)) {
-        throw new ConflictError('An account with that email already exists')
+        created = rows[0]!
+      } catch (error) {
+        // The unique index is the authority on duplicates. Checking first and
+        // inserting after would still race; this cannot.
+        if (isUniqueViolation(error)) {
+          throw new ConflictError('An account with that email already exists')
+        }
+        throw error
       }
-      throw error
-    }
 
-    this.logger.log(`Registered user ${created.id}`)
+      await this.orgs.create({ name: `${created.name}'s Organization` }, created.id, tx)
 
-    return this.startSession(created, userAgent)
+      return this.startSession(created, userAgent, tx)
+    })
+
+    this.logger.log(`Registered user ${session.user.id}`)
+
+    return session
   }
 
   async login(input: LoginRequest, userAgent?: string): Promise<AuthenticatedSession> {
@@ -124,11 +143,15 @@ export class AuthService {
     return deleted.length
   }
 
-  private async startSession(user: UserRow, userAgent?: string): Promise<AuthenticatedSession> {
+  private async startSession(
+    user: UserRow,
+    userAgent?: string,
+    executor: Executor = this.db,
+  ): Promise<AuthenticatedSession> {
     const token = createSessionToken()
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
 
-    await this.db.insert(sessions).values({
+    await executor.insert(sessions).values({
       userId: user.id,
       tokenHash: hashSessionToken(token),
       expiresAt,

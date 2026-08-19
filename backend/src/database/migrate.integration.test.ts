@@ -64,8 +64,12 @@ describe.skipIf(!url)('migrations against a real database', () => {
     const last = ids.at(-1)!
 
     expect(await down(sql)).toBe(last)
-    // Only the last one went; everything before it is still applied.
-    expect(await tableExists('users')).toBe(false)
+
+    // Only that one went; everything before it is still applied. Asserted by
+    // counting rather than by naming a table, so adding a migration to the end
+    // does not break this test.
+    const applied = (await status(sql)).filter((entry) => entry.appliedAt !== null)
+    expect(applied.map((entry) => entry.id)).toEqual(ids.slice(0, -1))
     expect(await extensionExists('citext')).toBe(true)
   })
 

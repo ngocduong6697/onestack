@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  UsePipes,
-} from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common'
 import { Throttle } from '@nestjs/throttler'
 import {
   loginRequestSchema,
@@ -34,9 +24,10 @@ export class AuthController {
   /** Three a minute per IP: enough for a typo, useless for scripted signup. */
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('register')
-  @UsePipes(new ZodValidationPipe(registerRequestSchema))
   async register(
-    @Body() body: RegisterRequest,
+    // Scoped to the body: @UsePipes would also run custom param decorators
+    // through this schema.
+    @Body(new ZodValidationPipe(registerRequestSchema)) body: RegisterRequest,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<PublicUser> {
@@ -49,9 +40,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
-  @UsePipes(new ZodValidationPipe(loginRequestSchema))
   async login(
-    @Body() body: LoginRequest,
+    @Body(new ZodValidationPipe(loginRequestSchema)) body: LoginRequest,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<PublicUser> {

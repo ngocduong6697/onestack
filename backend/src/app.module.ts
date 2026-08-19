@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module'
 import { DomainExceptionFilter } from './common/domain-exception.filter'
 import { DatabaseHealth } from './database/database.health'
 import { DatabaseModule } from './database/database.module'
+import { OrgsModule } from './orgs/orgs.module'
 import { HealthController } from './health/health.controller'
 import { ReadyController } from './health/ready.controller'
 
@@ -22,6 +23,7 @@ import { ReadyController } from './health/ready.controller'
       skipIf: () =>
         process.env.NODE_ENV !== 'production' && process.env.THROTTLE_DISABLED === 'true',
     }),
+    OrgsModule,
     AuthModule,
   ],
   controllers: [HealthController, ReadyController],

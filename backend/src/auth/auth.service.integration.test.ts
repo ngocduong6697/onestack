@@ -6,6 +6,7 @@ import { ConflictError, UnauthorizedError } from '../common/errors'
 import * as schema from '../database/schema'
 import { sessions, users } from '../database/schema'
 import { up } from '../database/migrate'
+import { OrgsService } from '../orgs/orgs.service'
 import { AuthService } from './auth.service'
 import { hashSessionToken } from './tokens'
 
@@ -14,7 +15,7 @@ const url = process.env.TEST_DATABASE_URL
 describe.skipIf(!url)('AuthService against a real database', () => {
   const sql = postgres(url ?? '', { max: 1, onnotice: () => undefined })
   const db = drizzle(sql, { schema })
-  const auth = new AuthService(db)
+  const auth = new AuthService(db, new OrgsService(db))
 
   const credentials = {
     email: 'founder@onestack.test',
@@ -32,7 +33,9 @@ describe.skipIf(!url)('AuthService against a real database', () => {
   })
 
   beforeEach(async () => {
-    await sql.unsafe('truncate table sessions, users cascade')
+    await sql.unsafe(
+      'truncate table sessions, memberships, workspaces, organizations, users cascade',
+    )
   })
 
   describe('register', () => {
