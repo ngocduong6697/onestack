@@ -100,3 +100,36 @@ Yes, with the rules that apply at this stage:
 - Rule 10 — every module added ships with a test.
   Rules 7, 8 and 9 (audit, AI cost, migrations) have nothing to bind to yet and
   land in TASK-014, TASK-010 and TASK-002.
+
+## Follow-up fixes
+
+CI failed on the pushed commit and two latent defects surfaced while
+diagnosing it. All three are fixed.
+
+**1. CI red — `format:check` (the actual failure).**
+`docs/specs/TASK-001-review.md` was written after the last `yarn format` run,
+so it went in unformatted and prettier rejected it. Reproduced by cloning the
+commit and running the chain from a clean install; every other step passed.
+Fixed by formatting, and guarded by a new `yarn verify` script that runs
+exactly what CI runs, in the same order, as one command before committing.
+
+**2. CSP would have blocked the first API call.**
+`connect-src` was `'self'` only, while the browser has to reach the API on
+another origin. Nothing broke yet because no page calls the API — TASK-003
+would have been the first, and the failure would have read as a network error
+rather than a policy one. The header list moved out of `next.config.ts` into
+`src/lib/security-headers.ts` so it could be tested, and now names the API
+origin, degrading to same-origin when the value is missing or malformed.
+
+**3. The web image would have shipped the wrong API url.**
+`NEXT_PUBLIC_*` is inlined into the client bundle at build time, but
+`docker-compose.yml` supplied `NEXT_PUBLIC_API_URL` only as a runtime
+variable, so any deployment would have carried the localhost default forever.
+It is now a build arg. Verified from the routes manifest: built without the
+variable the policy is `connect-src 'self'`; built with it, `connect-src
+'self' https://api.onestack.test`.
+
+**Also:** the deprecated `actions/checkout@v4` and `actions/setup-node@v4`
+were bumped to `@v7` — both were being forced onto Node 24 with a warning,
+and both keep the inputs this workflow uses. A stray empty root `drizzle/`
+directory, left over from an early `mkdir`, was removed.

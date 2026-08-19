@@ -10,6 +10,10 @@ COPY frontend/package.json ./frontend/
 RUN yarn install --frozen-lockfile
 COPY shared ./shared
 COPY frontend ./frontend
+# NEXT_PUBLIC_* is baked into the client bundle here, not read at runtime.
+# It has to be a build arg or the image ships with the default forever.
+ARG NEXT_PUBLIC_API_URL=http://localhost:4000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN yarn workspace @onestack/shared build && yarn workspace @onestack/frontend build
 
 FROM node:22-alpine AS runner

@@ -34,14 +34,17 @@ jobs:
       TEST_DATABASE_URL: postgres://onestack:onestack@localhost:5432/onestack_test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: yarn
 
       - run: yarn install --frozen-lockfile
+
+      # These steps are `yarn verify` run one at a time, so a failure names
+      # itself in the Actions UI instead of "exit code 1". Keep both in sync.
 
       - run: yarn format:check
 
