@@ -65,6 +65,35 @@ TEST_DATABASE_URL=postgres://$USER@localhost:5432/onestack_test yarn test
 
 Without `TEST_DATABASE_URL` they skip and say so, rather than passing quietly.
 
+## Authentication
+
+Sessions are rows, not tokens you have to trust. The client holds an opaque
+256-bit value in an httpOnly cookie; the database holds only its SHA-256, so
+reading the table gives an attacker nothing they can present.
+
+| Endpoint              | Does                                  |
+| --------------------- | ------------------------------------- |
+| `POST /auth/register` | Creates the account, starts a session |
+| `POST /auth/login`    | Starts a session                      |
+| `POST /auth/logout`   | Deletes the session row               |
+| `GET /auth/me`        | The current user, or 401              |
+
+Passwords are argon2id at OWASP's minimum parameters. Login answers a wrong
+password and an unknown email identically, and spends the same time on both,
+so neither the body nor the clock reveals which accounts exist.
+
+Guarding a route:
+
+```ts
+@UseGuards(SessionGuard)
+@Get('customers')
+list(@CurrentUser() user: PublicUser) { ... }
+```
+
+The guard is opt-in. A global one would silently require a session on routes
+that are not ready for it — including the probes, which must answer during an
+outage.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

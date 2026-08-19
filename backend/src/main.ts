@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
 import { enabledLogLevels } from './common/logger'
@@ -15,6 +16,8 @@ async function bootstrap(): Promise<void> {
   })
 
   app.use(helmet())
+  // The session token arrives as a cookie; nothing reads req.cookies without this.
+  app.use(cookieParser())
   app.enableCors({ origin: env.CORS_ORIGINS, credentials: true })
   app.enableShutdownHooks()
 
