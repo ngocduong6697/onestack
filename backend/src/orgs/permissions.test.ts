@@ -14,6 +14,7 @@ describe('permission map', () => {
       'ai:read',
       'workflow:read',
       'analytics:read',
+      'invoice:read',
     ])
 
     // Listed explicitly rather than derived, so widening a member's reach is
@@ -29,6 +30,7 @@ describe('permission map', () => {
       'workflow:write',
       'workflow:run',
       'analytics:write',
+      'invoice:write',
     ] as Permission[]) {
       expect(can('member', permission)).toBe(false)
     }
@@ -49,6 +51,7 @@ describe('permission map', () => {
       'workflow:write',
       'workflow:run',
       'analytics:write',
+      'invoice:write',
     ] as Permission[]) {
       expect(can('admin', permission)).toBe(true)
     }

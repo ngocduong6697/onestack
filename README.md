@@ -467,6 +467,43 @@ Capturing a snapshot is a workflow action (`analytics.snapshot`), not an
 `http.request` aimed at this API — the SSRF guard refuses loopback, correctly,
 so a workflow cannot call its own server.
 
+## Billing
+
+```
+POST /orgs/{orgId}/workspaces/{workspaceId}/invoices
+GET  .../invoices?status=&customerId=
+GET  .../invoices/{id}                  with lines and payments
+POST .../invoices/{id}/issue            draft -> open, allocates the number
+POST .../invoices/{id}/pay              records a payment
+POST .../invoices/{id}/void
+POST .../billing/sweep                  marks overdue, sets past_due
+```
+
+`draft → open → paid`, with `void` and `uncollectible` as the other endings.
+The transitions live in a table rather than a chain of ifs, because the
+interesting cases are the ones that must **not** happen — voiding a paid
+invoice, paying a draft, issuing twice — and a table makes each of those a
+missing entry rather than a branch somebody forgot.
+
+**Overpayment is refused**, not accepted and ignored: a record claiming more
+was paid than was owed is worse than a rejected entry, because it looks like
+reconciled money.
+
+Renewing a subscription issues an invoice for the period it just started. That
+is idempotent by a partial unique index on `(subscription_id, period_start)`,
+so renewing twice cannot bill twice.
+
+`customer_id` is `restrict`: an invoice records who owed what, so deleting a
+customer with invoices **fails**. That is the correct answer, not an
+inconvenience.
+
+Settling an invoice writes one revenue line into the analytics ledger, so the
+dashboard stops treating recurring revenue as the only kind — and clears
+`past_due` on the subscription if the sweep had set it.
+
+There is no card processing. Payments are recorded by hand, which also means
+nothing here needs a key, a webhook or a sandbox to be verified.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

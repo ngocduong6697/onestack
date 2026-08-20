@@ -20,6 +20,7 @@ import {
   type ProductPriceRow,
   type SubscriptionRow,
 } from '../database/schema'
+import { BillingService } from '../billing/billing.service'
 import { calculateMrr, EARNING_STATUSES } from './mrr'
 import { initialPeriod, nextPeriodEnd } from './periods'
 
@@ -44,7 +45,10 @@ function toSubscription(row: SubscriptionRow): Subscription {
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly billing: BillingService,
+  ) {}
 
   async create(workspaceId: string, input: CreateSubscriptionRequest): Promise<Subscription> {
     // Both sides are re-checked against this workspace, so an id from another
@@ -221,6 +225,21 @@ export class SubscriptionsService {
       })
       .where(and(eq(subscriptions.id, id), eq(subscriptions.workspaceId, workspaceId)))
       .returning()
+
+    /**
+     * The period that just began is the one to bill for. Idempotent by the
+     * unique index on (subscription_id, period_start), so renewing twice
+     * cannot bill twice — it returns null the second time.
+     */
+    await this.billing.invoiceForPeriod(
+      renewed!,
+      {
+        description: `Subscription ${price.interval === 'year' ? 'year' : 'month'} from ${start.toISOString().slice(0, 10)}`,
+        unitMicroUsd: price.amountCents * 10_000,
+        currency: price.currency,
+      },
+      this.db,
+    )
 
     return toSubscription(renewed!)
   }
