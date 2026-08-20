@@ -32,6 +32,8 @@ describe.skipIf(!url)('members and invitations over HTTP', () => {
     const orgs = await http().get('/orgs').set('Cookie', cookie)
     // Asserted here so a failed setup names itself, rather than surfacing as
     // `undefined.id` further down and pointing at the wrong thing.
+    // Asserted here so a failed setup names itself, rather than surfacing as
+    // `undefined.id` further down and pointing at the wrong thing.
     expect(orgs.status).toBe(200)
     expect(orgs.body.length).toBeGreaterThan(0)
 
@@ -76,7 +78,16 @@ describe.skipIf(!url)('members and invitations over HTTP', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
     app = moduleRef.createNestApplication()
     app.use(cookieParser())
-    await app.init()
+    /**
+     * Listening once matters. supertest starts a server on an ephemeral port
+     * whenever the one it is given has no address, and closes it again when
+     * the request finishes — roughly two hundred listen/close cycles per file.
+     * Occasionally a request went out to a port that had just been released
+     * and reassigned, and a server belonging to something else answered it:
+     * a bare 404, empty body, never reaching this application at all. Holding
+     * one port for the whole file removes the churn and the race with it.
+     */
+    await app.listen(0)
   })
 
   afterAll(async () => {

@@ -26,7 +26,16 @@ describe.skipIf(!url)('auth throttling', () => {
 
     app = moduleRef.createNestApplication()
     app.use(cookieParser())
-    await app.init()
+    /**
+     * Listening once matters. supertest starts a server on an ephemeral port
+     * whenever the one it is given has no address, and closes it again when
+     * the request finishes — roughly two hundred listen/close cycles per file.
+     * Occasionally a request went out to a port that had just been released
+     * and reassigned, and a server belonging to something else answered it:
+     * a bare 404, empty body, never reaching this application at all. Holding
+     * one port for the whole file removes the churn and the race with it.
+     */
+    await app.listen(0)
   })
 
   afterAll(async () => {
