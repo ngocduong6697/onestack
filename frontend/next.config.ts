@@ -11,12 +11,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/:path*',
-        headers: securityHeaders({
-          // Read at build time, which is also when NEXT_PUBLIC_API_URL is
-          // inlined into the client bundle.
-          apiUrl: process.env.NEXT_PUBLIC_API_URL,
-          isDevelopment: process.env.NODE_ENV !== 'production',
-        }),
+        headers: securityHeaders({ isDevelopment: process.env.NODE_ENV !== 'production' }),
       },
     ]
   },

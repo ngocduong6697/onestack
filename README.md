@@ -588,6 +588,24 @@ docker compose up --build
 Postgres starts first, the API waits for it, the site waits for the API's
 `/health`. Postgres is not published to the host.
 
+## Coverage
+
+`yarn verify` runs the suite with coverage and fails below the thresholds in
+each workspace's `vitest.config.ts` — 90% lines and 85% branches on the
+backend, 90/88 on the frontend.
+
+They are a **ratchet, not a target**: set just below what the suite already
+achieved, so a drop fails the build without demanding new work to go green.
+Raise them deliberately. Do not lower one to make a build pass.
+
+`main.ts`, the type-only provider interface and the schema definitions are
+excluded — bootstrap and declarations, where a test costs more than it finds.
+
+A number is not a measure of whether tests are any good. The gaps this task
+closed were chosen by what they guarded, not by how much they moved the
+figure: `AiService.stream` carries rule 8 and had no test, and the login form
+was the only way into the application and had none either.
+
 ## Working agreement
 
 Read [CLAUDE.md](CLAUDE.md) first. Every task gets a spec from

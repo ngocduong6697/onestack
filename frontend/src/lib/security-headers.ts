@@ -3,25 +3,10 @@
  * tested. The API sends its own via helmet; these cover the site.
  */
 
-/** Extracts the origin the browser is allowed to call, ignoring a bad value. */
-export function apiOrigin(rawUrl: string | undefined): string | null {
-  if (!rawUrl) return null
-
-  try {
-    return new URL(rawUrl).origin
-  } catch {
-    // A malformed value degrades to same-origin. Emitting a broken directive
-    // would make the browser reject the whole policy, which is worse.
-    return null
-  }
-}
-
-export function securityHeaders(options: {
-  apiUrl: string | undefined
-  isDevelopment: boolean
-}): { key: string; value: string }[] {
-  const origin = apiOrigin(options.apiUrl)
-
+export function securityHeaders(options: { isDevelopment: boolean }): {
+  key: string
+  value: string
+}[] {
   return [
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -41,8 +26,13 @@ export function securityHeaders(options: {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
-        // The browser calls the API on another origin; CSP has to name it.
-        `connect-src 'self'${origin ? ` ${origin}` : ''}`,
+        /**
+         * Same-origin, and deliberately so. TASK-015 moved every browser
+         * request behind this app's own /api proxy, so there is no second
+         * origin to allow — and a policy that still named one would be wider
+         * than the application needs.
+         */
+        "connect-src 'self'",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",

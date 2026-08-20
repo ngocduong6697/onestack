@@ -20,7 +20,8 @@
     "test": "yarn shared:build && yarn workspaces run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "yarn format:check && yarn typecheck && yarn lint && yarn test && yarn build && yarn api:build"
+    "verify": "yarn format:check && yarn typecheck && yarn lint && yarn test:coverage && yarn build && yarn api:build",
+    "test:coverage": "yarn shared:build && yarn workspaces run test:coverage"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
