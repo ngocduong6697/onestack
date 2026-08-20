@@ -18,6 +18,14 @@ const envSchema = z.object({
    * fails fast instead of hanging a request. */
   DATABASE_CONNECT_TIMEOUT: z.coerce.number().int().min(1).default(10),
   LOG_LEVEL: logLevelSchema.default('info'),
+  /**
+   * AI provider keys. All optional: a provider without a key is simply not
+   * available, which is better than refusing to boot because one vendor is
+   * unused. Server-side only — these are never sent anywhere near a client.
+   */
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  GOOGLE_API_KEY: z.string().min(1).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

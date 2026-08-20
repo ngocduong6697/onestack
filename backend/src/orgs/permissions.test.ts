@@ -11,6 +11,7 @@ describe('permission map', () => {
       'customer:read',
       'product:read',
       'subscription:read',
+      'ai:read',
     ])
 
     // Listed explicitly rather than derived, so widening a member's reach is
@@ -22,6 +23,7 @@ describe('permission map', () => {
       'customer:write',
       'product:write',
       'subscription:write',
+      'ai:invoke',
     ] as Permission[]) {
       expect(can('member', permission)).toBe(false)
     }
@@ -38,6 +40,7 @@ describe('permission map', () => {
       'customer:write',
       'product:write',
       'subscription:write',
+      'ai:invoke',
     ] as Permission[]) {
       expect(can('admin', permission)).toBe(true)
     }

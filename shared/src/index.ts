@@ -120,3 +120,20 @@ export type {
   MrrByCurrency,
   SubscriptionSummary,
 } from './subscriptions'
+export {
+  AI_PROVIDER_VALUES,
+  aiProviderSchema,
+  aiMessageSchema,
+  completionRequestSchema,
+  tokenUsageSchema,
+  completionResponseSchema,
+  aiModelSchema,
+} from './ai'
+export type {
+  AiProviderName,
+  AiMessage,
+  CompletionRequestBody,
+  TokenUsageDto,
+  CompletionResponse,
+  AiModelDto,
+} from './ai'

@@ -283,6 +283,55 @@ nothing.
 Money movement — invoices, proration, dunning — is TASK-013. Nothing here
 charges anybody.
 
+## AI
+
+One interface over Anthropic, OpenAI and Google. A caller changes `model` and
+nothing else — the adapter translates roles, system prompts and usage fields
+into the same shape whichever vendor answers.
+
+```
+GET  /orgs/{orgId}/workspaces/{workspaceId}/ai/models
+POST /orgs/{orgId}/workspaces/{workspaceId}/ai/complete
+```
+
+Every response carries what it cost, which is what CLAUDE.md rule 8 needs:
+
+```json
+{
+  "model": "claude-opus-5",
+  "provider": "anthropic",
+  "text": "...",
+  "usage": { "inputTokens": 1000, "outputTokens": 500 },
+  "costMicroUsd": 17500,
+  "costCents": 2
+}
+```
+
+Prices live in `src/ai/registry.ts` as **integer micro-dollars per million
+tokens** — a millionth of a dollar, so no float ever touches money. Each entry
+records the source it came from and the date it was checked, because a price
+nobody verified is worse than no price. `costMicroUsd` is exact; `costCents` is
+for display, and a small request rounding to zero cents still carries its exact
+micro-dollar amount so a month of them adds up correctly.
+
+Keys are optional and server-side only:
+
+```
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+GOOGLE_API_KEY=
+```
+
+A provider without a key is simply unavailable — its models are absent from
+`/ai/models` and asking for one returns 422 naming the provider. The API boots
+either way, so an unused vendor is nobody's problem. Keys never appear in a
+response, a log line, or an error: the adapters map vendor errors onto domain
+errors rather than passing the vendor's message through.
+
+Prompts and answers are never logged. They are customer data, and an AI request
+log is the easiest place to leak them by accident — only tokens and cost are
+recorded. Persisting that record is TASK-010.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

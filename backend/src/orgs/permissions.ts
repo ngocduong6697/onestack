@@ -21,6 +21,8 @@ export const PERMISSIONS = [
   'product:write',
   'subscription:read',
   'subscription:write',
+  'ai:read',
+  'ai:invoke',
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
@@ -32,6 +34,7 @@ const MEMBER: Permission[] = [
   'customer:read',
   'product:read',
   'subscription:read',
+  'ai:read',
 ]
 
 const ADMIN: Permission[] = [
@@ -46,6 +49,7 @@ const ADMIN: Permission[] = [
   'customer:write',
   'product:write',
   'subscription:write',
+  'ai:invoke',
 ]
 
 /**
