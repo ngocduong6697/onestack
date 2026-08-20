@@ -328,9 +328,35 @@ either way, so an unused vendor is nobody's problem. Keys never appear in a
 response, a log line, or an error: the adapters map vendor errors onto domain
 errors rather than passing the vendor's message through.
 
-Prompts and answers are never logged. They are customer data, and an AI request
-log is the easiest place to leak them by accident — only tokens and cost are
-recorded. Persisting that record is TASK-010.
+Prompts and answers are never logged or stored. They are customer data, and an
+AI request log is the easiest place to leak them by accident.
+
+### What every call leaves behind
+
+Recording happens inside `AiService`, around the provider call — not in an
+interceptor on the controller. Rule 8 says _every_ AI request, and TASK-011's
+automation engine will call the service directly, where an interceptor would
+never see it.
+
+```
+GET /orgs/{orgId}/workspaces/{workspaceId}/ai/usage?from=&to=
+GET /orgs/{orgId}/workspaces/{workspaceId}/ai/requests?status=&model=&cursor=
+```
+
+One row per call: provider, model, tokens, cost, duration, status, who and
+where. **No prompt, no answer** — a leak of this table exposes what was spent,
+not what anybody asked.
+
+Failed calls are recorded too, with the domain error code and never a vendor
+message. A failure nobody recorded is a bill nobody can explain.
+
+Writing the record can never fail the request. By the time it runs the answer
+has been generated and paid for; losing it because bookkeeping failed would be
+the worse outcome, so `record` logs its own failure and returns.
+
+`cost_micro_usd` is a **bigint** — micro-dollars are millionths, so `integer`
+would top out near $2,147 and wrap silently. Totals are summed from the rows on
+read, so they cannot drift from them.
 
 ## Health
 

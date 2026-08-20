@@ -5,6 +5,13 @@ import { costOf } from './cost'
 import { AI_PROVIDERS_TOKEN, type ConfiguredProviders } from './providers.factory'
 import type { AiProvider } from './provider'
 import { findModel, MODELS, type ModelEntry } from './registry'
+import { AiUsageService } from './usage.service'
+
+/** Who and where the spend is attributed to. */
+export interface AiCaller {
+  workspaceId: string
+  userId: string | null
+}
 
 @Injectable()
 export class AiService {
@@ -15,7 +22,10 @@ export class AiService {
    * factory. Injected through a token rather than built here, so a test can
    * hand over fakes without a key or a network.
    */
-  constructor(@Inject(AI_PROVIDERS_TOKEN) private readonly providers: ConfiguredProviders) {}
+  constructor(
+    @Inject(AI_PROVIDERS_TOKEN) private readonly providers: ConfiguredProviders,
+    private readonly usage: AiUsageService,
+  ) {}
 
   /** Only models whose provider is actually configured. */
   listModels(): AiModelDto[] {
@@ -31,26 +41,60 @@ export class AiService {
     }))
   }
 
-  async complete(input: CompletionRequestBody): Promise<CompletionResponse> {
+  /**
+   * Recording lives here rather than in an interceptor on the controller.
+   * Rule 8 says *every* AI request, and TASK-011's automation engine will call
+   * this service directly — a controller-level interceptor would miss it.
+   */
+  async complete(input: CompletionRequestBody, caller: AiCaller): Promise<CompletionResponse> {
     const { model, provider } = this.resolve(input.model)
 
     // The registry's ceiling wins, so a caller cannot ask one model for more
     // than it can produce and be billed for the attempt.
     const maxTokens = Math.min(input.maxTokens, model.maxOutputTokens)
+    const startedAt = Date.now()
 
-    const result = await provider.complete({
-      model: model.id,
-      messages: input.messages,
-      system: input.system,
-      maxTokens,
-    })
+    let result
+
+    try {
+      result = await provider.complete({
+        model: model.id,
+        messages: input.messages,
+        system: input.system,
+        maxTokens,
+      })
+    } catch (error) {
+      // A failed call can still have cost tokens, and a failure nobody
+      // recorded is a bill nobody can explain.
+      await this.usage.record({
+        workspaceId: caller.workspaceId,
+        userId: caller.userId,
+        provider: model.provider,
+        model: model.id,
+        status: 'failed',
+        usage: { inputTokens: 0, outputTokens: 0 },
+        costMicroUsd: 0,
+        durationMs: Date.now() - startedAt,
+        errorCode: errorCodeOf(error),
+      })
+
+      // Rethrown unchanged: recording must not disguise what went wrong.
+      throw error
+    }
 
     const cost = costOf(result.usage, model)
 
-    // Tokens and cost, never the prompt or the answer: both are customer data.
-    this.logger.log(
-      `${model.provider}/${model.id} in=${result.usage.inputTokens} out=${result.usage.outputTokens} cost=${cost.microUsd}µ$`,
-    )
+    await this.usage.record({
+      workspaceId: caller.workspaceId,
+      userId: caller.userId,
+      provider: model.provider,
+      model: model.id,
+      status: 'succeeded',
+      usage: result.usage,
+      costMicroUsd: cost.microUsd,
+      durationMs: Date.now() - startedAt,
+      stopReason: result.stopReason,
+    })
 
     return {
       model: model.id,
@@ -113,4 +157,15 @@ export class AiService {
 
     return { model, provider }
   }
+}
+
+/** The domain code, never the vendor's message. */
+function errorCodeOf(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code: unknown }).code
+
+    if (typeof code === 'string') return code
+  }
+
+  return error instanceof Error ? error.constructor.name : 'unknown_error'
 }

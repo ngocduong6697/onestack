@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { NotFoundError, ValidationError } from '../common/errors'
 import { AiService } from './ai.service'
+import type { AiUsageService } from './usage.service'
 import type { AiProvider, CompletionResult } from './provider'
 import type { AiProviderName } from './registry'
 
@@ -20,8 +21,15 @@ function fakeProvider(name: AiProviderName, result: Partial<CompletionResult> = 
   } as unknown as AiProvider
 }
 
+/** A recorder that remembers rather than writes. */
+function fakeUsage() {
+  return { record: vi.fn().mockResolvedValue(undefined) } as unknown as AiUsageService
+}
+
+const caller = { workspaceId: '01a01a00-0000-7000-8000-000000000001', userId: null }
+
 const serviceWith = (...names: AiProviderName[]) =>
-  new AiService(new Map(names.map((name) => [name, fakeProvider(name)])))
+  new AiService(new Map(names.map((name) => [name, fakeProvider(name)])), fakeUsage())
 
 describe('AiService', () => {
   describe('listModels', () => {
@@ -51,11 +59,14 @@ describe('AiService', () => {
 
   describe('complete', () => {
     it('returns the answer with usage and cost attached', async () => {
-      const result = await serviceWith('anthropic').complete({
-        model: 'claude-opus-5',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 100,
-      })
+      const result = await serviceWith('anthropic').complete(
+        {
+          model: 'claude-opus-5',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 100,
+        },
+        caller,
+      )
 
       expect(result).toMatchObject({
         model: 'claude-opus-5',
@@ -68,34 +79,43 @@ describe('AiService', () => {
 
     it('refuses a model nobody has heard of', async () => {
       await expect(
-        serviceWith('anthropic').complete({
-          model: 'gpt-9-ultra',
-          messages: [{ role: 'user', content: 'Hi' }],
-          maxTokens: 100,
-        }),
+        serviceWith('anthropic').complete(
+          {
+            model: 'gpt-9-ultra',
+            messages: [{ role: 'user', content: 'Hi' }],
+            maxTokens: 100,
+          },
+          caller,
+        ),
       ).rejects.toThrow(NotFoundError)
     })
 
     /** Configured-ness is a deployment fact, but the caller still needs telling. */
     it('refuses a known model whose provider has no key', async () => {
       await expect(
-        serviceWith('anthropic').complete({
-          model: 'gemini-3.7-flash',
-          messages: [{ role: 'user', content: 'Hi' }],
-          maxTokens: 100,
-        }),
+        serviceWith('anthropic').complete(
+          {
+            model: 'gemini-3.7-flash',
+            messages: [{ role: 'user', content: 'Hi' }],
+            maxTokens: 100,
+          },
+          caller,
+        ),
       ).rejects.toThrow(ValidationError)
     })
 
     it('caps maxTokens at what the model can actually produce', async () => {
       const provider = fakeProvider('anthropic')
-      const service = new AiService(new Map([['anthropic', provider]]))
+      const service = new AiService(new Map([['anthropic', provider]]), fakeUsage())
 
-      await service.complete({
-        model: 'claude-haiku-4-5',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 128_000,
-      })
+      await service.complete(
+        {
+          model: 'claude-haiku-4-5',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 128_000,
+        },
+        caller,
+      )
 
       // Haiku tops out at 64k, whatever the caller asked for.
       expect(provider.complete).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 64_000 }))
@@ -103,13 +123,16 @@ describe('AiService', () => {
 
     it('passes a smaller request through untouched', async () => {
       const provider = fakeProvider('anthropic')
-      const service = new AiService(new Map([['anthropic', provider]]))
+      const service = new AiService(new Map([['anthropic', provider]]), fakeUsage())
 
-      await service.complete({
-        model: 'claude-opus-5',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 500,
-      })
+      await service.complete(
+        {
+          model: 'claude-opus-5',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 500,
+        },
+        caller,
+      )
 
       expect(provider.complete).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 500 }))
     })
@@ -122,26 +145,114 @@ describe('AiService', () => {
           ['anthropic', anthropic],
           ['google', google],
         ]),
+        fakeUsage(),
       )
 
-      await service.complete({
-        model: 'gemini-3.7-flash',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 100,
-      })
+      await service.complete(
+        {
+          model: 'gemini-3.7-flash',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 100,
+        },
+        caller,
+      )
 
       expect(google.complete).toHaveBeenCalled()
       expect(anthropic.complete).not.toHaveBeenCalled()
     })
 
     it('costs a cheap model at its own rate, not the flagship one', async () => {
-      const result = await serviceWith('google').complete({
-        model: 'gemini-2.5-flash-lite',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 100,
-      })
+      const result = await serviceWith('google').complete(
+        {
+          model: 'gemini-2.5-flash-lite',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 100,
+        },
+        caller,
+      )
 
       expect(result.costMicroUsd).toBe(1000 * 0.1 + 500 * 0.4)
     })
+  })
+})
+
+describe('recording, which rule 8 requires of every request', () => {
+  const caller2 = { workspaceId: '01a01a00-0000-7000-8000-000000000009', userId: 'user-1' }
+
+  const request = {
+    model: 'claude-opus-5',
+    messages: [{ role: 'user' as const, content: 'Hi' }],
+    maxTokens: 100,
+  }
+
+  it('records a successful call with the same numbers it returns', async () => {
+    const usage = fakeUsage()
+    const service = new AiService(new Map([['anthropic', fakeProvider('anthropic')]]), usage)
+
+    const result = await service.complete(request, caller2)
+
+    expect(usage.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: caller2.workspaceId,
+        userId: 'user-1',
+        provider: 'anthropic',
+        model: 'claude-opus-5',
+        status: 'succeeded',
+        costMicroUsd: result.costMicroUsd,
+        usage: result.usage,
+      }),
+    )
+  })
+
+  /** A failed call can still have cost tokens; an unrecorded one is a bill nobody can explain. */
+  it('records a failure and rethrows the original error untouched', async () => {
+    const usage = fakeUsage()
+    const boom = Object.assign(new Error('vendor exploded'), { code: 'service_unavailable' })
+    const provider = {
+      name: 'anthropic',
+      complete: vi.fn().mockRejectedValue(boom),
+      stream: vi.fn(),
+    } as unknown as AiProvider
+    const service = new AiService(new Map([['anthropic', provider]]), usage)
+
+    await expect(service.complete(request, caller2)).rejects.toBe(boom)
+
+    expect(usage.record).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorCode: 'service_unavailable' }),
+    )
+  })
+
+  it('records the time the call took', async () => {
+    const usage = fakeUsage()
+    const service = new AiService(new Map([['anthropic', fakeProvider('anthropic')]]), usage)
+
+    await service.complete(request, caller2)
+
+    const entry = (usage.record as unknown as { mock: { calls: [{ durationMs: number }][] } }).mock
+      .calls[0]![0]
+    expect(entry.durationMs).toBeGreaterThanOrEqual(0)
+  })
+
+  it('never passes prompt or answer text to the recorder', async () => {
+    const usage = fakeUsage()
+    const service = new AiService(new Map([['anthropic', fakeProvider('anthropic')]]), usage)
+
+    await service.complete(
+      { ...request, messages: [{ role: 'user', content: 'a very secret prompt' }] },
+      caller2,
+    )
+
+    const entry = (usage.record as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]![0]
+    expect(JSON.stringify(entry)).not.toContain('a very secret prompt')
+    expect(JSON.stringify(entry)).not.toContain('answer')
+  })
+
+  it('does not record anything when the model is unknown, because nothing was spent', async () => {
+    const usage = fakeUsage()
+    const service = new AiService(new Map([['anthropic', fakeProvider('anthropic')]]), usage)
+
+    await expect(service.complete({ ...request, model: 'gpt-9' }, caller2)).rejects.toThrow()
+
+    expect(usage.record).not.toHaveBeenCalled()
   })
 })

@@ -137,3 +137,22 @@ export type {
   CompletionResponse,
   AiModelDto,
 } from './ai'
+export {
+  AI_REQUEST_STATUS_VALUES,
+  aiRequestStatusSchema,
+  usageQuerySchema,
+  listAiRequestsQuerySchema,
+  aiRequestSchema,
+  usageLineSchema,
+  usageSummarySchema,
+  aiRequestPageSchema,
+} from './ai-usage'
+export type {
+  AiRequestStatus,
+  UsageQuery,
+  ListAiRequestsQuery,
+  AiRequestDto,
+  UsageLine,
+  UsageSummary,
+  AiRequestPage,
+} from './ai-usage'
