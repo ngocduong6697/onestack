@@ -26,6 +26,8 @@ export const PERMISSIONS = [
   'workflow:read',
   'workflow:write',
   'workflow:run',
+  'analytics:read',
+  'analytics:write',
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
@@ -39,6 +41,7 @@ const MEMBER: Permission[] = [
   'subscription:read',
   'ai:read',
   'workflow:read',
+  'analytics:read',
 ]
 
 const ADMIN: Permission[] = [
@@ -56,6 +59,7 @@ const ADMIN: Permission[] = [
   'ai:invoke',
   'workflow:write',
   'workflow:run',
+  'analytics:write',
 ]
 
 /**

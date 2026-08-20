@@ -10,6 +10,7 @@ import type {
 } from '@onestack/shared'
 import { and, desc, eq, gt, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { ConflictError, NotFoundError } from '../common/errors'
+import { cappedLimit, toPage } from '../common/pagination'
 import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
@@ -22,7 +23,6 @@ import {
 import { containsPattern } from './search'
 
 /** Regardless of what was asked for. */
-const MAX_LIMIT = 100
 
 function toCustomer(row: CustomerRow): Customer {
   return {
@@ -86,7 +86,7 @@ export class CustomersService {
    * what page one costs.
    */
   async list(workspaceId: string, query: ListCustomersQuery): Promise<CustomerPage> {
-    const limit = Math.min(query.limit, MAX_LIMIT)
+    const limit = cappedLimit(query.limit)
     const conditions: (SQL | undefined)[] = [eq(customers.workspaceId, workspaceId)]
 
     if (query.stage) conditions.push(eq(customers.stage, query.stage))
@@ -116,10 +116,7 @@ export class CustomersService {
       // One extra row answers "is there a next page" without a second query.
       .limit(limit + 1)
 
-    const items = rows.slice(0, limit).map(toCustomer)
-    const nextCursor = rows.length > limit ? (items.at(-1)?.id ?? null) : null
-
-    return { items, nextCursor }
+    return toPage(rows, limit, toCustomer)
   }
 
   async get(workspaceId: string, customerId: string): Promise<Customer> {

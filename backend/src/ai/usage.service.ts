@@ -7,12 +7,12 @@ import type {
   UsageSummary,
 } from '@onestack/shared'
 import { and, count, desc, eq, gte, lte, sql, sum, type SQL } from 'drizzle-orm'
+import { cappedLimit, toPage } from '../common/pagination'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import { aiRequests, type AiRequestRow } from '../database/schema'
 import type { TokenUsage } from './cost'
 
-const MAX_LIMIT = 100
 const MICRO_USD_PER_CENT = 10_000
 
 /** Everything one row needs, assembled by the caller around the vendor call. */
@@ -142,7 +142,7 @@ export class AiUsageService {
   }
 
   async list(workspaceId: string, query: ListAiRequestsQuery): Promise<AiRequestPage> {
-    const limit = Math.min(query.limit, MAX_LIMIT)
+    const limit = cappedLimit(query.limit)
     const conditions: (SQL | undefined)[] = [eq(aiRequests.workspaceId, workspaceId)]
 
     if (query.status) conditions.push(eq(aiRequests.status, query.status))
@@ -156,8 +156,6 @@ export class AiUsageService {
       .orderBy(aiRequests.id)
       .limit(limit + 1)
 
-    const items = rows.slice(0, limit).map(toDto)
-
-    return { items, nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null }
+    return toPage(rows, limit, toDto)
   }
 }

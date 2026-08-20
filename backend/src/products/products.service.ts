@@ -11,13 +11,12 @@ import type {
 } from '@onestack/shared'
 import { and, asc, desc, eq, gt, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { ConflictError, NotFoundError } from '../common/errors'
+import { cappedLimit, toPage } from '../common/pagination'
 import { isUniqueViolation } from '../common/postgres-errors'
 import { containsPattern } from '../customers/search'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import { productPrices, products, type ProductPriceRow, type ProductRow } from '../database/schema'
-
-const MAX_LIMIT = 100
 
 function toProduct(row: ProductRow): Product {
   return {
@@ -71,7 +70,7 @@ export class ProductsService {
 
   /** Keyset pagination, identical in shape to customers. */
   async list(workspaceId: string, query: ListProductsQuery): Promise<ProductPage> {
-    const limit = Math.min(query.limit, MAX_LIMIT)
+    const limit = cappedLimit(query.limit)
     const conditions: (SQL | undefined)[] = [eq(products.workspaceId, workspaceId)]
 
     if (query.status) conditions.push(eq(products.status, query.status))
@@ -97,9 +96,7 @@ export class ProductsService {
       .orderBy(products.id)
       .limit(limit + 1)
 
-    const items = rows.slice(0, limit).map(toProduct)
-
-    return { items, nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null }
+    return toPage(rows, limit, toProduct)
   }
 
   /** The only view that embeds prices — the list deliberately does not. */

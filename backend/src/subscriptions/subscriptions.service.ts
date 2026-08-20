@@ -5,10 +5,10 @@ import type {
   Subscription,
   SubscriptionPage,
   SubscriptionSummary,
-  SubscriptionStatus,
 } from '@onestack/shared'
 import { and, count, eq, gt, inArray, type SQL } from 'drizzle-orm'
 import { ConflictError, NotFoundError } from '../common/errors'
+import { cappedLimit, toPage } from '../common/pagination'
 import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
@@ -20,14 +20,10 @@ import {
   type ProductPriceRow,
   type SubscriptionRow,
 } from '../database/schema'
-import { calculateMrr } from './mrr'
+import { calculateMrr, EARNING_STATUSES } from './mrr'
 import { initialPeriod, nextPeriodEnd } from './periods'
 
-const MAX_LIMIT = 100
 const DAY_MS = 24 * 60 * 60 * 1000
-
-/** Statuses that represent a subscription still worth money. */
-const EARNING: SubscriptionStatus[] = ['active', 'trialing']
 
 function toSubscription(row: SubscriptionRow): Subscription {
   return {
@@ -83,7 +79,7 @@ export class SubscriptionsService {
   }
 
   async list(workspaceId: string, query: ListSubscriptionsQuery): Promise<SubscriptionPage> {
-    const limit = Math.min(query.limit, MAX_LIMIT)
+    const limit = cappedLimit(query.limit)
     const conditions: (SQL | undefined)[] = [eq(subscriptions.workspaceId, workspaceId)]
 
     if (query.status) conditions.push(eq(subscriptions.status, query.status))
@@ -97,9 +93,7 @@ export class SubscriptionsService {
       .orderBy(subscriptions.id)
       .limit(limit + 1)
 
-    const items = rows.slice(0, limit).map(toSubscription)
-
-    return { items, nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null }
+    return toPage(rows, limit, toSubscription)
   }
 
   async get(workspaceId: string, id: string): Promise<Subscription> {
@@ -241,7 +235,10 @@ export class SubscriptionsService {
       .from(subscriptions)
       .innerJoin(productPrices, eq(productPrices.id, subscriptions.priceId))
       .where(
-        and(eq(subscriptions.workspaceId, workspaceId), inArray(subscriptions.status, EARNING)),
+        and(
+          eq(subscriptions.workspaceId, workspaceId),
+          inArray(subscriptions.status, EARNING_STATUSES),
+        ),
       )
 
     const grouped = await this.db

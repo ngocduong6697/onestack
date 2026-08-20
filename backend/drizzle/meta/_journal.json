@@ -57,6 +57,13 @@
       "when": 1787208433926,
       "tag": "0008_automation",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787233654075,
+      "tag": "0009_analytics",
+      "breakpoints": true
     }
   ]
 }

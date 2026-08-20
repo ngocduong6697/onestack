@@ -1,5 +1,12 @@
 import type { MrrByCurrency } from '@onestack/shared'
-import type { PriceInterval } from '../database/schema'
+import type { PriceInterval, SubscriptionStatus } from '../database/schema'
+
+/**
+ * The statuses that represent a subscription still worth money. Defined here,
+ * beside the MRR rule, because "what counts as revenue" and "how revenue is
+ * calculated" are the same question — and TASK-012 needs the same answer.
+ */
+export const EARNING_STATUSES: SubscriptionStatus[] = ['active', 'trialing']
 
 export interface RecurringLine {
   amountCents: number

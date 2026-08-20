@@ -7,9 +7,11 @@ import { AppModule } from './app.module'
 import { AutomationWorker } from './automation/worker'
 import { enabledLogLevels } from './common/logger'
 import { loadEnv } from './config/env'
+import { loadEnvFile } from './config/env-file'
 
 async function bootstrap(): Promise<void> {
   // Before the application, so a bad environment fails here and not later.
+  loadEnvFile()
   const env = loadEnv()
 
   const app = await NestFactory.create(AppModule, {

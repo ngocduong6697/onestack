@@ -31,6 +31,9 @@ function templatesIn(step: WorkflowStep): string[] {
     return [step.prompt, step.system ?? '']
   }
 
+  // A snapshot step takes no input, so it has nothing to template.
+  if (step.action === 'analytics.snapshot') return []
+
   return [step.url, step.body ?? '', ...Object.values(step.headers ?? {})]
 }
 

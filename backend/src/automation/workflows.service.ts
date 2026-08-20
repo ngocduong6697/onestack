@@ -11,6 +11,7 @@ import {
 } from '@onestack/shared'
 import { and, asc, desc, eq, gt, type SQL } from 'drizzle-orm'
 import { NotFoundError } from '../common/errors'
+import { cappedLimit, toPage } from '../common/pagination'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
 import {
@@ -25,8 +26,6 @@ import { JobQueue } from './queue'
 import { WorkflowRunner } from './runner'
 import { nextRunFor } from './schedule'
 import { assertTemplatesResolvable } from './templates'
-
-const MAX_LIMIT = 100
 
 function toWorkflow(row: WorkflowRow): Workflow {
   return {
@@ -175,7 +174,7 @@ export class WorkflowsService {
   ): Promise<RunPage> {
     await this.row(workspaceId, workflowId)
 
-    const capped = Math.min(limit, MAX_LIMIT)
+    const capped = cappedLimit(limit)
     const conditions: (SQL | undefined)[] = [
       eq(runs.workspaceId, workspaceId),
       eq(runs.workflowId, workflowId),
@@ -190,9 +189,7 @@ export class WorkflowsService {
       .orderBy(runs.id)
       .limit(capped + 1)
 
-    const items = rows.slice(0, capped).map(toRun)
-
-    return { items, nextCursor: rows.length > capped ? (items.at(-1)?.id ?? null) : null }
+    return toPage(rows, capped, toRun)
   }
 
   async getRun(workspaceId: string, runId: string): Promise<RunWithSteps> {

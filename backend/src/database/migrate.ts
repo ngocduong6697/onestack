@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import postgres, { type Sql } from 'postgres'
+import { loadEnvFile } from '../config/env-file'
 
 /**
  * A migration runner rather than drizzle-kit's, for one reason: rule 9 asks
@@ -168,6 +169,8 @@ export async function status(
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? 'status'
+
+  loadEnvFile()
   const url = process.env.DATABASE_URL
 
   if (!url) throw new Error('DATABASE_URL is not set.')

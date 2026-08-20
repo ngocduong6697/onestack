@@ -40,7 +40,20 @@ export const httpStepSchema = z.object({
   body: z.string().max(50_000).optional(),
 })
 
-export const stepSchema = z.discriminatedUnion('action', [aiStepSchema, httpStepSchema])
+/**
+ * Captures today's metrics. A separate action rather than an http.request
+ * pointed at this API: the SSRF guard refuses loopback, correctly, so a
+ * workflow cannot call its own server.
+ */
+export const snapshotStepSchema = z.object({
+  action: z.literal('analytics.snapshot'),
+})
+
+export const stepSchema = z.discriminatedUnion('action', [
+  aiStepSchema,
+  httpStepSchema,
+  snapshotStepSchema,
+])
 
 export const workflowStepsSchema = z.array(stepSchema).min(1).max(20)
 
@@ -122,6 +135,7 @@ export const runPageSchema = z.object({
 })
 
 export type WorkflowStep = z.infer<typeof stepSchema>
+export type SnapshotStep = z.infer<typeof snapshotStepSchema>
 export type AiStep = z.infer<typeof aiStepSchema>
 export type HttpStep = z.infer<typeof httpStepSchema>
 export type CreateWorkflowRequest = z.infer<typeof createWorkflowRequestSchema>

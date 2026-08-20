@@ -22,8 +22,17 @@ yarn api:dev              # API on :4000
 yarn dev                  # site on :3000
 ```
 
-The API validates its environment at boot and refuses to start with a message
-naming any variable that is missing or malformed.
+`yarn api:dev` and the `db:*` commands read the repository-root `.env` through
+Node's own `--env-file` reader, so no `dotenv` is involved. A variable already
+present in the real environment always wins over the file, and a deployment
+with no `.env` at all boots normally on its environment alone.
+
+The API then validates that environment at boot and refuses to start with a
+message naming any variable that is missing or malformed.
+
+`yarn test` is the exception: integration tests take `TEST_DATABASE_URL` from
+the command line so a test run can never be pointed at a development database
+by a file it did not mean to read. See [Database](#database).
 
 ## Commands
 
@@ -64,6 +73,8 @@ TEST_DATABASE_URL=postgres://$USER@localhost:5432/onestack_test yarn test
 ```
 
 Without `TEST_DATABASE_URL` they skip and say so, rather than passing quietly.
+Setting it in `.env` does not reach them — pass it on the command line, so
+dropping a schema stays something you asked for out loud.
 
 ## Authentication
 
@@ -412,6 +423,49 @@ server-side request forgery unless the destination is checked. It is:
 
 AI steps go through `AiService`, so they are recorded in `ai_requests` like
 every other call. Rule 8 has no exception for automation.
+
+## Analytics
+
+```
+GET  /orgs/{orgId}/workspaces/{workspaceId}/analytics/summary
+GET  .../analytics/series?metric=&days=
+POST .../analytics/snapshot          idempotent within a day
+POST .../ledger                      a recorded cost or revenue line
+GET  .../ledger?from=&to=&kind=
+DELETE .../ledger/{id}
+```
+
+MRR comes from the same function the subscriptions summary uses — one rule,
+not two implementations that drift.
+
+Gross profit is revenue minus AI cost minus recorded costs. **Margin is null
+when there is no revenue**, not zero: a margin on nothing has no answer, and
+reporting 0% would read as "we lost everything". It is carried as integer
+basis points — hundredths of a percent — so no percentage is a float either.
+
+### Why snapshots exist
+
+Current state cannot answer "what was MRR in June". A subscription records
+what it is now; once a price changes or it cancels, what it used to be is
+gone. So a nightly snapshot writes one row per workspace per day, and the
+series endpoint reads those directly.
+
+Snapshots start from the day the job first runs. There is no backfill, because
+there is nothing to reconstruct yesterday from — an honest gap beats an
+invented line.
+
+A day with no snapshot is omitted from the series rather than interpolated.
+
+### The ledger
+
+Hosting bills and one-off invoices have no source in the system, so they are
+recorded by hand. Amounts are always positive and the sign lives in `kind`, so
+a negative cost cannot quietly become revenue. Entries can be deleted but not
+edited: a figure that has been reported should not be silently rewritten.
+
+Capturing a snapshot is a workflow action (`analytics.snapshot`), not an
+`http.request` aimed at this API — the SSRF guard refuses loopback, correctly,
+so a workflow cannot call its own server.
 
 ## Health
 

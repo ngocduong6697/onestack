@@ -1,6 +1,19 @@
 import { csvSchema, logLevelSchema, parseEnv, portSchema } from '@onestack/shared'
 import { z } from 'zod'
 
+/**
+ * An optional secret, where an empty string means absent.
+ *
+ * `.env` files are written as `KEY=` far more often than the key is left out
+ * altogether — this repository's own `.env.example` does exactly that — and
+ * treating that as "present but invalid" refuses to boot over a vendor nobody
+ * is using.
+ */
+const optionalSecret = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().min(1).optional(),
+)
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: portSchema.default(4000),
@@ -23,9 +36,9 @@ const envSchema = z.object({
    * available, which is better than refusing to boot because one vendor is
    * unused. Server-side only — these are never sent anywhere near a client.
    */
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  GOOGLE_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: optionalSecret,
+  OPENAI_API_KEY: optionalSecret,
+  GOOGLE_API_KEY: optionalSecret,
 })
 
 export type Env = z.infer<typeof envSchema>

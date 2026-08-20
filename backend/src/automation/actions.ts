@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { HttpStep, WorkflowStep } from '@onestack/shared'
 import { AiService } from '../ai/ai.service'
+import { AnalyticsService } from '../analytics/analytics.service'
 import { assertSafeUrl } from './safe-url'
 import { render, type StepOutputs } from './templates'
 
@@ -23,7 +24,10 @@ export interface StepOutcome {
 export class Actions {
   private readonly logger = new Logger(Actions.name)
 
-  constructor(private readonly ai: AiService) {}
+  constructor(
+    private readonly ai: AiService,
+    private readonly analytics: AnalyticsService,
+  ) {}
 
   async run(step: WorkflowStep, context: StepContext): Promise<StepOutcome> {
     if (step.action === 'ai.complete') {
@@ -48,6 +52,12 @@ export class Actions {
         },
         costMicroUsd: result.costMicroUsd,
       }
+    }
+
+    if (step.action === 'analytics.snapshot') {
+      const row = await this.analytics.snapshot(context.workspaceId)
+
+      return { output: { capturedOn: row.capturedOn }, costMicroUsd: 0 }
     }
 
     return this.http(step, context)
