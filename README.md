@@ -540,6 +540,35 @@ missing entry — the money moved either way. A failure is logged as
 Deleting a person nulls the actor but keeps their name, so the entry still
 answers "who".
 
+## The app
+
+```
+yarn dev        the site on :3000
+yarn api:dev    the API on :4000
+```
+
+Sign in at `/login`; the dashboard is `/`.
+
+**The browser only ever talks to the Next app.** `/api/[...path]` forwards to
+the API server-side, so the session cookie lives on one origin, there is no
+CORS to configure, CSP stays `connect-src 'self'`, and development has the
+same shape as an nginx deployment would. The API's address is `API_URL` —
+deliberately not `NEXT_PUBLIC_`, because the browser has no use for it.
+
+Pages fetch in server components, forwarding the incoming cookie. The session
+token never reaches client JavaScript or the HTML — verified by grepping the
+rendered page for it.
+
+Middleware only checks the cookie is _present_. Whether it is valid is the
+API's business, and asking on every request would mean a round trip per asset;
+a stale cookie reaches a page, which redirects.
+
+Formatting happens at the edge. The API deals in integer micro-dollars and
+basis points so nothing rounds in transit; `2_100_000_000` becomes `$2,100`
+and `8238` becomes `82%` in the last step. A null margin renders as `—`, not
+`0%` — a margin on no revenue has no answer, and zero would read as a total
+loss.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |
