@@ -504,6 +504,42 @@ dashboard stops treating recurring revenue as the only kind — and clears
 There is no card processing. Payments are recorded by hand, which also means
 nothing here needs a key, a webhook or a sandbox to be verified.
 
+## Audit log
+
+CLAUDE.md rule 7. Every important action is recorded — including the ones a
+workflow performed at three in the morning with nobody logged in.
+
+```
+GET /orgs/{orgId}/audit?action=&resourceType=&actorId=&from=&to=
+```
+
+Organization-scoped, not workspace-scoped: signing in and changing somebody's
+role happen outside any workspace. **Admin and above only** — the log says who
+removed whom.
+
+Recording is explicit, at the service layer, rather than an interceptor on the
+controllers. Rule 7 says _every_ important action, and a workflow never touches
+a controller — an interceptor would have missed every change automation makes.
+The cost is that a new action can be forgotten; the catalogue in
+`src/audit/actions.ts` is one file you can read and check.
+
+An entry carries who, what, which record, and the fields that changed. It never
+carries a password, a hash, a token, an API key or a prompt: `changes` passes
+through a redactor centrally, so a call site cannot forget.
+
+```
+action: 'member.role_changed'
+actor:  Founder
+changes: { from: 'member', to: 'admin' }
+```
+
+**Recording never throws.** An audit write that fails a payment is worse than a
+missing entry — the money moved either way. A failure is logged as
+`AUDIT GAP`, loudly, rather than swallowed.
+
+Deleting a person nulls the actor but keeps their name, so the entry still
+answers "who".
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

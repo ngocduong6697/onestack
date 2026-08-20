@@ -9,6 +9,8 @@ import type {
   UpdateCustomerRequest,
 } from '@onestack/shared'
 import { and, desc, eq, gt, ilike, or, sql, type SQL } from 'drizzle-orm'
+import { AUDIT_ACTIONS } from '../audit/actions'
+import { AuditService } from '../audit/audit.service'
 import { ConflictError, NotFoundError } from '../common/errors'
 import { cappedLimit, toPage } from '../common/pagination'
 import { isUniqueViolation } from '../common/postgres-errors'
@@ -52,7 +54,10 @@ function toNote(row: CustomerNoteRow): CustomerNote {
 
 @Injectable()
 export class CustomersService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(workspaceId: string, input: CreateCustomerRequest): Promise<Customer> {
     try {
@@ -158,13 +163,30 @@ export class CustomersService {
     }
   }
 
-  async remove(workspaceId: string, customerId: string): Promise<void> {
+  async remove(
+    workspaceId: string,
+    customerId: string,
+    actor?: { userId: string; label: string; organizationId: string },
+  ): Promise<void> {
     const deleted = await this.db
       .delete(customers)
       .where(and(eq(customers.id, customerId), eq(customers.workspaceId, workspaceId)))
       .returning()
 
     if (deleted.length === 0) throw new NotFoundError('Customer not found')
+
+    if (actor) {
+      await this.audit.record({
+        organizationId: actor.organizationId,
+        workspaceId,
+        actor: { userId: actor.userId, label: actor.label },
+        action: AUDIT_ACTIONS.customerDeleted,
+        resourceType: 'customer',
+        resourceId: customerId,
+        // What was deleted, so the entry answers something.
+        changes: { name: deleted[0]?.name, email: deleted[0]?.email },
+      })
+    }
   }
 
   async addNote(

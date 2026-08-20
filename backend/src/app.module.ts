@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AiModule } from './ai/ai.module'
 import { AnalyticsModule } from './analytics/analytics.module'
+import { AuditModule } from './audit/audit.module'
 import { BillingModule } from './billing/billing.module'
 import { AutomationModule } from './automation/automation.module'
 import { AuthModule } from './auth/auth.module'
@@ -39,6 +40,7 @@ import { ReadyController } from './health/ready.controller'
     SubscriptionsModule,
     AiModule,
     AnalyticsModule,
+    AuditModule,
     AutomationModule,
     AuthModule,
   ],

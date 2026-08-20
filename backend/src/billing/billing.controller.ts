@@ -15,7 +15,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator'
 import { SessionGuard } from '../auth/session.guard'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
-import { RequirePermission } from '../orgs/current-org.decorator'
+import { CurrentOrg, RequirePermission, type OrgContext } from '../orgs/current-org.decorator'
 import { CurrentWorkspace } from '../orgs/current-workspace.decorator'
 import { OrgGuard } from '../orgs/org.guard'
 import { WorkspaceGuard } from '../orgs/workspace.guard'
@@ -58,9 +58,15 @@ export class BillingController {
   @HttpCode(200)
   issue(
     @CurrentWorkspace() workspace: Workspace,
+    @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: PublicUser,
     @Param('invoiceId') invoiceId: string,
   ): Promise<InvoiceDetail> {
-    return this.billing.issue(workspace.id, invoiceId)
+    return this.billing.issue(workspace.id, invoiceId, {
+      userId: user.id,
+      label: user.name,
+      organizationId: org.organization.id,
+    })
   }
 
   @Post('invoices/:invoiceId/pay')
@@ -68,11 +74,15 @@ export class BillingController {
   @HttpCode(200)
   pay(
     @CurrentWorkspace() workspace: Workspace,
+    @CurrentOrg() org: OrgContext,
     @CurrentUser() user: PublicUser,
     @Param('invoiceId') invoiceId: string,
     @Body(new ZodValidationPipe(recordPaymentRequestSchema)) body: RecordPaymentRequest,
   ): Promise<InvoiceDetail> {
-    return this.billing.recordPayment(workspace.id, invoiceId, body, user.id)
+    return this.billing.recordPayment(workspace.id, invoiceId, body, user.id, {
+      label: user.name,
+      organizationId: org.organization.id,
+    })
   }
 
   @Post('invoices/:invoiceId/void')
@@ -80,9 +90,15 @@ export class BillingController {
   @HttpCode(200)
   void(
     @CurrentWorkspace() workspace: Workspace,
+    @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: PublicUser,
     @Param('invoiceId') invoiceId: string,
   ): Promise<InvoiceDetail> {
-    return this.billing.void(workspace.id, invoiceId)
+    return this.billing.void(workspace.id, invoiceId, {
+      userId: user.id,
+      label: user.name,
+      organizationId: org.organization.id,
+    })
   }
 
   @Post('billing/sweep')

@@ -36,6 +36,7 @@ export class MembersController {
     return this.members.updateRole(org.organization.id, userId, body.role, {
       userId: user.id,
       role: org.role,
+      label: user.name,
     })
   }
 
@@ -54,6 +55,10 @@ export class MembersController {
       throw new ForbiddenError('This action requires the member:remove permission')
     }
 
-    return this.members.remove(org.organization.id, userId, { userId: user.id, role: org.role })
+    return this.members.remove(org.organization.id, userId, {
+      userId: user.id,
+      role: org.role,
+      label: user.name,
+    })
   }
 }

@@ -9,6 +9,8 @@ import type {
   SweepResult,
 } from '@onestack/shared'
 import { and, asc, desc, eq, isNotNull, lt, sql, type SQL } from 'drizzle-orm'
+import { AUDIT_ACTIONS } from '../audit/actions'
+import { AuditService } from '../audit/audit.service'
 import { ConflictError, NotFoundError } from '../common/errors'
 import { cappedLimit, toPage } from '../common/pagination'
 import { isUniqueViolation } from '../common/postgres-errors'
@@ -55,7 +57,10 @@ function toInvoice(row: InvoiceRow): Invoice {
 export class BillingService {
   private readonly logger = new Logger(BillingService.name)
 
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly audit: AuditService,
+  ) {}
 
   async createDraft(workspaceId: string, input: CreateInvoiceRequest): Promise<InvoiceDetail> {
     const belongs = await this.db
@@ -107,7 +112,11 @@ export class BillingService {
    * issues cannot take the same one — and the unique index is the backstop if
    * they somehow race anyway.
    */
-  async issue(workspaceId: string, invoiceId: string): Promise<InvoiceDetail> {
+  async issue(
+    workspaceId: string,
+    invoiceId: string,
+    actor?: { userId: string; label: string; organizationId: string },
+  ): Promise<InvoiceDetail> {
     const existing = await this.row(workspaceId, invoiceId)
 
     assertTransition(existing.status, 'open')
@@ -130,7 +139,21 @@ export class BillingService {
         .where(eq(invoices.id, invoiceId))
     })
 
-    return this.detail(workspaceId, invoiceId)
+    const issued = await this.detail(workspaceId, invoiceId)
+
+    if (actor) {
+      await this.audit.record({
+        organizationId: actor.organizationId,
+        workspaceId,
+        actor: { userId: actor.userId, label: actor.label },
+        action: AUDIT_ACTIONS.invoiceIssued,
+        resourceType: 'invoice',
+        resourceId: invoiceId,
+        changes: { number: issued.number, total: issued.totalMicroUsd },
+      })
+    }
+
+    return issued
   }
 
   async recordPayment(
@@ -138,6 +161,7 @@ export class BillingService {
     invoiceId: string,
     input: RecordPaymentRequest,
     userId: string,
+    actor?: { label: string; organizationId: string },
   ): Promise<InvoiceDetail> {
     const existing = await this.row(workspaceId, invoiceId)
 
@@ -198,10 +222,26 @@ export class BillingService {
       }
     })
 
+    if (actor) {
+      await this.audit.record({
+        organizationId: actor.organizationId,
+        workspaceId,
+        actor: { userId, label: actor.label },
+        action: AUDIT_ACTIONS.invoicePaid,
+        resourceType: 'invoice',
+        resourceId: invoiceId,
+        changes: { amount: input.amountMicroUsd, settled: result.settled },
+      })
+    }
+
     return this.detail(workspaceId, invoiceId)
   }
 
-  async void(workspaceId: string, invoiceId: string): Promise<InvoiceDetail> {
+  async void(
+    workspaceId: string,
+    invoiceId: string,
+    actor?: { userId: string; label: string; organizationId: string },
+  ): Promise<InvoiceDetail> {
     const existing = await this.row(workspaceId, invoiceId)
 
     assertTransition(existing.status, 'void')
@@ -210,6 +250,18 @@ export class BillingService {
       .update(invoices)
       .set({ status: 'void', voidedAt: new Date() })
       .where(eq(invoices.id, invoiceId))
+
+    if (actor) {
+      await this.audit.record({
+        organizationId: actor.organizationId,
+        workspaceId,
+        actor: { userId: actor.userId, label: actor.label },
+        action: AUDIT_ACTIONS.invoiceVoided,
+        resourceType: 'invoice',
+        resourceId: invoiceId,
+        changes: { from: existing.status },
+      })
+    }
 
     return this.detail(workspaceId, invoiceId)
   }

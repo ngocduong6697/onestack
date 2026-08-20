@@ -28,6 +28,7 @@ export class InvitationsController {
     return this.invitations.create(org.organization.id, body, {
       userId: user.id,
       role: org.role,
+      label: user.name,
     })
   }
 

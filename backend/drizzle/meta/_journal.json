@@ -71,6 +71,13 @@
       "when": 1787234716766,
       "tag": "0010_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787235681593,
+      "tag": "0011_audit_events",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Member } from '@onestack/shared'
 import { and, count, eq } from 'drizzle-orm'
+import { AUDIT_ACTIONS } from '../audit/actions'
+import { AuditService } from '../audit/audit.service'
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/errors'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
@@ -9,7 +11,10 @@ import type { Role } from './roles'
 
 @Injectable()
 export class MembersService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly audit: AuditService,
+  ) {}
 
   async list(organizationId: string): Promise<Member[]> {
     const rows = await this.db
@@ -35,7 +40,7 @@ export class MembersService {
     organizationId: string,
     targetUserId: string,
     role: Role,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; role: Role; label?: string },
   ): Promise<Member> {
     const target = await this.membership(organizationId, targetUserId)
 
@@ -59,6 +64,15 @@ export class MembersService {
         and(eq(memberships.organizationId, organizationId), eq(memberships.userId, targetUserId)),
       )
 
+    await this.audit.record({
+      organizationId,
+      actor: { userId: actor.userId, label: actor.label ?? 'unknown' },
+      action: AUDIT_ACTIONS.memberRoleChanged,
+      resourceType: 'membership',
+      resourceId: targetUserId,
+      changes: { from: target.role, to: role },
+    })
+
     const updated = await this.list(organizationId)
 
     return updated.find((member) => member.userId === targetUserId)!
@@ -71,7 +85,7 @@ export class MembersService {
   async remove(
     organizationId: string,
     targetUserId: string,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; role: Role; label?: string },
   ): Promise<void> {
     const target = await this.membership(organizationId, targetUserId)
     const isSelf = targetUserId === actor.userId
@@ -91,6 +105,15 @@ export class MembersService {
       .where(
         and(eq(memberships.organizationId, organizationId), eq(memberships.userId, targetUserId)),
       )
+
+    await this.audit.record({
+      organizationId,
+      actor: { userId: actor.userId, label: actor.label ?? 'unknown' },
+      action: AUDIT_ACTIONS.memberRemoved,
+      resourceType: 'membership',
+      resourceId: targetUserId,
+      changes: { role: target.role, self: isSelf },
+    })
   }
 
   /** Membership without the organization join — used by the invite flow. */

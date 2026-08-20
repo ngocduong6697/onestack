@@ -6,6 +6,7 @@ import { ConflictError, UnauthorizedError } from '../common/errors'
 import * as schema from '../database/schema'
 import { sessions, users } from '../database/schema'
 import { up } from '../database/migrate'
+import { AuditService } from '../audit/audit.service'
 import { OrgsService } from '../orgs/orgs.service'
 import { AuthService } from './auth.service'
 import { hashSessionToken } from './tokens'
@@ -15,7 +16,9 @@ const url = process.env.TEST_DATABASE_URL
 describe.skipIf(!url)('AuthService against a real database', () => {
   const sql = postgres(url ?? '', { max: 1, onnotice: () => undefined })
   const db = drizzle(sql, { schema })
-  const auth = new AuthService(db, new OrgsService(db))
+  // A real recorder against the same database: auditing is part of what
+  // register and login now do, so stubbing it would test less than happens.
+  const auth = new AuthService(db, new OrgsService(db), new AuditService(db))
 
   const credentials = {
     email: 'founder@onestack.test',

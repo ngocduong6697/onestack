@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common'
 import type { CreateInviteRequest, CreatedInvitation, Invitation } from '@onestack/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createSessionToken, hashSessionToken } from '../auth/tokens'
+import { AUDIT_ACTIONS } from '../audit/actions'
+import { AuditService } from '../audit/audit.service'
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/errors'
 import { isUniqueViolation } from '../common/postgres-errors'
 import type { Database } from '../database/client'
@@ -30,13 +32,14 @@ export class InvitationsService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly members: MembersService,
+    private readonly audit: AuditService,
   ) {}
 
   /** The only moment the token exists in readable form. */
   async create(
     organizationId: string,
     input: CreateInviteRequest,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; role: Role; label?: string },
   ): Promise<CreatedInvitation> {
     if (input.role === 'owner' && actor.role !== 'owner') {
       throw new ForbiddenError('Only an owner can invite an owner')
@@ -67,6 +70,16 @@ export class InvitationsService {
       }
       throw error
     }
+
+    await this.audit.record({
+      organizationId,
+      actor: { userId: actor.userId, label: actor.label ?? 'unknown' },
+      action: AUDIT_ACTIONS.inviteCreated,
+      resourceType: 'invitation',
+      resourceId: created.id,
+      // The address, never the token.
+      changes: { email: created.email, role: created.role },
+    })
 
     return { ...toInvitation(created), token }
   }
@@ -134,6 +147,15 @@ export class InvitationsService {
         .update(invitations)
         .set({ acceptedAt: new Date() })
         .where(eq(invitations.id, invitation.id))
+    })
+
+    await this.audit.record({
+      organizationId: invitation.organizationId,
+      actor: { userId, label: 'invited member' },
+      action: AUDIT_ACTIONS.inviteAccepted,
+      resourceType: 'invitation',
+      resourceId: invitation.id,
+      changes: { role: invitation.role },
     })
 
     return { organizationId: invitation.organizationId, role: invitation.role }

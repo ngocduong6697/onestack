@@ -31,6 +31,7 @@ describe('permission map', () => {
       'workflow:run',
       'analytics:write',
       'invoice:write',
+      'audit:read',
     ] as Permission[]) {
       expect(can('member', permission)).toBe(false)
     }
@@ -52,9 +53,16 @@ describe('permission map', () => {
       'workflow:run',
       'analytics:write',
       'invoice:write',
+      'audit:read',
     ] as Permission[]) {
       expect(can('admin', permission)).toBe(true)
     }
+  })
+
+  it('grants an admin every permission in the catalogue except none', () => {
+    // Enumerated rather than sampled: sampling let audit:read be added
+    // without this file noticing.
+    expect([...permissionsFor('admin')].sort()).toEqual([...PERMISSIONS].sort())
   })
 
   /**

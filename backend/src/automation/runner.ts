@@ -3,7 +3,16 @@ import { workflowStepsSchema, type WorkflowStep } from '@onestack/shared'
 import { eq } from 'drizzle-orm'
 import type { Database } from '../database/client'
 import { DATABASE } from '../database/database.module'
-import { runs, runSteps, workflows, type RunRow, type WorkflowRow } from '../database/schema'
+import {
+  runs,
+  runSteps,
+  workflows,
+  workspaces,
+  type RunRow,
+  type WorkflowRow,
+} from '../database/schema'
+import { AUDIT_ACTIONS } from '../audit/actions'
+import { AuditService, SYSTEM_ACTOR } from '../audit/audit.service'
 import { Actions } from './actions'
 import type { StepOutputs } from './templates'
 
@@ -16,6 +25,7 @@ export class WorkflowRunner {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly actions: Actions,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -99,6 +109,33 @@ export class WorkflowRunner {
       .set({ lastRunAt: new Date() })
       .where(eq(workflows.id, workflow.id))
 
+    // A run started by the scheduler has no user; that is the point of the
+    // system actor, and it is why an interceptor could never have seen this.
+    const organizationId = await this.organizationOf(workflow.workspaceId)
+
+    if (organizationId) {
+      await this.audit.record({
+        organizationId,
+        workspaceId: workflow.workspaceId,
+        actor: { userId, label: userId ? 'user' : SYSTEM_ACTOR },
+        action: AUDIT_ACTIONS.workflowRun,
+        resourceType: 'workflow',
+        resourceId: workflow.id,
+        changes: { status: finished!.status, steps: steps.length },
+      })
+    }
+
     return finished!
+  }
+
+  /** Audit is organization-scoped; a workflow only knows its workspace. */
+  private async organizationOf(workspaceId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ organizationId: workspaces.organizationId })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1)
+
+    return row?.organizationId ?? null
   }
 }

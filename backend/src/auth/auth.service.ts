@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
+import { AUDIT_ACTIONS, type AuditAction } from '../audit/actions'
+import { AuditService } from '../audit/audit.service'
 import { OrgsService } from '../orgs/orgs.service'
 import type { LoginRequest, PublicUser, RegisterRequest } from '@onestack/shared'
 import { and, eq, gt, lt, sql } from 'drizzle-orm'
@@ -45,6 +47,7 @@ export class AuthService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly orgs: OrgsService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -82,6 +85,9 @@ export class AuthService {
 
     this.logger.log(`Registered user ${session.user.id}`)
 
+    // Auth events belong to the organization the account was created with.
+    await this.auditForUser(session.user.id, AUDIT_ACTIONS.authRegistered, session.user.name)
+
     return session
   }
 
@@ -107,6 +113,8 @@ export class AuthService {
     }
 
     await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id))
+
+    await this.auditForUser(user.id, AUDIT_ACTIONS.authLogin, user.name)
 
     return this.startSession(user, userAgent)
   }
@@ -161,6 +169,24 @@ export class AuthService {
     })
 
     return { user: toPublicUser(user), token, expiresAt }
+  }
+
+  /**
+   * Signing in happens outside any workspace, so the event is filed against
+   * every organization the person belongs to — usually exactly one.
+   */
+  private async auditForUser(userId: string, action: AuditAction, label: string): Promise<void> {
+    const orgs = await this.orgs.listForUser(userId)
+
+    for (const org of orgs) {
+      await this.audit.record({
+        organizationId: org.id,
+        actor: { userId, label },
+        action,
+        resourceType: 'user',
+        resourceId: userId,
+      })
+    }
   }
 
   private async touch(sessionId: string, lastSeenAt: Date): Promise<void> {

@@ -28,7 +28,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator'
 import { SessionGuard } from '../auth/session.guard'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
-import { RequirePermission } from '../orgs/current-org.decorator'
+import { CurrentOrg, RequirePermission, type OrgContext } from '../orgs/current-org.decorator'
 import { CurrentWorkspace } from '../orgs/current-workspace.decorator'
 import { OrgGuard } from '../orgs/org.guard'
 import { WorkspaceGuard } from '../orgs/workspace.guard'
@@ -86,9 +86,15 @@ export class CustomersController {
   @HttpCode(204)
   remove(
     @CurrentWorkspace() workspace: Workspace,
+    @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: PublicUser,
     @Param('customerId') customerId: string,
   ): Promise<void> {
-    return this.customers.remove(workspace.id, customerId)
+    return this.customers.remove(workspace.id, customerId, {
+      userId: user.id,
+      label: user.name,
+      organizationId: org.organization.id,
+    })
   }
 
   @Post(':customerId/notes')
