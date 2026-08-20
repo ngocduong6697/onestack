@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { APP_FILTER, APP_GUARD } from '@nestjs/core'
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import { ThrottlerModule } from '@nestjs/throttler'
+import { AddressThrottlerGuard, THROTTLER_GUARD } from './common/throttler'
 import { AiModule } from './ai/ai.module'
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AuditModule } from './audit/audit.module'
@@ -22,16 +23,16 @@ import { ReadyController } from './health/ready.controller'
   imports: [
     DatabaseModule,
     // A floor for every route; the auth routes tighten it with @Throttle.
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 120 }],
-      /**
-       * Tests that are not about rate limiting need it out of the way, and
-       * evaluating this per request avoids reading the environment at import
-       * time. Production can never turn it off, whatever the variable says.
-       */
-      skipIf: () =>
-        process.env.NODE_ENV !== 'production' && process.env.THROTTLE_DISABLED === 'true',
-    }),
+    /**
+     * A floor for every route; the auth routes tighten it with @Throttle.
+     *
+     * There is deliberately no way to switch this off by configuration. It
+     * was once possible, gated to non-production — which is one
+     * misconfiguration away from not being gated at all. Tests that need it
+     * out of the way override THROTTLER_GUARD_OVERRIDE in the testing module
+     * instead, which cannot be reached from a running deployment.
+     */
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     OrgsModule,
     UsersModule,
     CustomersModule,
@@ -48,7 +49,11 @@ import { ReadyController } from './health/ready.controller'
   providers: [
     DatabaseHealth,
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Named, so a testing module can replace it; APP_GUARD alone cannot be
+    // overridden through Nest's testing utilities.
+    AddressThrottlerGuard,
+    { provide: THROTTLER_GUARD, useExisting: AddressThrottlerGuard },
+    { provide: APP_GUARD, useExisting: THROTTLER_GUARD },
   ],
 })
 export class AppModule {}

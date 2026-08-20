@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import request from 'supertest'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { THROTTLER_GUARD } from '../common/throttler'
 import { AppModule } from '../app.module'
 import { SESSION_COOKIE } from '../auth/session-cookie'
 import { up } from '../database/migrate'
@@ -73,11 +74,15 @@ describe.skipIf(!url)('subscriptions over HTTP', () => {
 
   beforeAll(async () => {
     process.env.DATABASE_URL = url
-    process.env.THROTTLE_DISABLED = 'true'
     await sql.unsafe('drop schema public cascade; create schema public;')
     await up(sql)
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      // Rate limiting has its own test file; here it would only fail this
+      // suite as the request count grows.
+      .overrideProvider(THROTTLER_GUARD)
+      .useValue({ canActivate: () => true })
+      .compile()
     app = moduleRef.createNestApplication()
     app.use(cookieParser())
     await app.listen(0)

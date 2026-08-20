@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser'
 import postgres from 'postgres'
 import request from 'supertest'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { THROTTLER_GUARD } from '../common/throttler'
 import { AppModule } from '../app.module'
 import { up } from '../database/migrate'
 import { SESSION_COOKIE } from './session-cookie'
@@ -34,9 +35,13 @@ describe.skipIf(!url)('auth over HTTP', () => {
     // The throttler has its own test file; here it would only make the suite
     // fail as the request count grows. APP_GUARD cannot be overridden through
     // the testing module, so the module's own skip flag is the way out.
-    process.env.THROTTLE_DISABLED = 'true'
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      // Rate limiting has its own test file; here it would only fail this
+      // suite as the request count grows.
+      .overrideProvider(THROTTLER_GUARD)
+      .useValue({ canActivate: () => true })
+      .compile()
 
     app = moduleRef.createNestApplication()
     app.use(cookieParser())

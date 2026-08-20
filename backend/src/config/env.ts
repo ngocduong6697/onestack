@@ -32,6 +32,16 @@ const envSchema = z.object({
   DATABASE_CONNECT_TIMEOUT: z.coerce.number().int().min(1).default(10),
   LOG_LEVEL: logLevelSchema.default('info'),
   /**
+   * How many proxy hops to trust for the client's real address.
+   *
+   * Zero by default, and deliberately so: trusting a proxy that is not there
+   * is worse than trusting none, because any client could then set its own
+   * `X-Forwarded-For` and claim any address — evading a rate limit or writing
+   * a false one into an audit entry. Set it to the number of proxies actually
+   * in front of this process, not to `true`.
+   */
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+  /**
    * AI provider keys. All optional: a provider without a key is simply not
    * available, which is better than refusing to boot because one vendor is
    * unused. Server-side only — these are never sent anywhere near a client.

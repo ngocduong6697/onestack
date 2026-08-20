@@ -46,6 +46,10 @@ jobs:
       # These steps are `yarn verify` run one at a time, so a failure names
       # itself in the Actions UI instead of "exit code 1". Keep both in sync.
 
+      # Cheap, and catches the mistake review reliably does not: a pasted key
+      # looks like any other string to the person who pasted it.
+      - run: yarn secrets:check
+
       - run: yarn format:check
 
       - run: yarn typecheck
@@ -53,6 +57,11 @@ jobs:
       - run: yarn lint
 
       - run: yarn test:coverage
+
+      # Advisory rather than blocking on a transitive advisory nobody can fix
+      # today; it still surfaces in the log and in the job summary.
+      - run: yarn audit --level high
+        continue-on-error: true
 
       - run: yarn build
         env:

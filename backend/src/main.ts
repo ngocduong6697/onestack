@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
@@ -14,9 +15,16 @@ async function bootstrap(): Promise<void> {
   loadEnvFile()
   const env = loadEnv()
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: enabledLogLevels(env.LOG_LEVEL),
   })
+
+  /**
+   * Express reads `X-Forwarded-For` only as far as this allows. With zero —
+   * the default — the header is ignored entirely and the socket address is
+   * used, so a direct client cannot lie about where it came from.
+   */
+  app.set('trust proxy', env.TRUST_PROXY)
 
   app.use(helmet())
   // The session token arrives as a cookie; nothing reads req.cookies without this.

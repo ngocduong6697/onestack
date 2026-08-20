@@ -18,7 +18,6 @@ describe.skipIf(!url)('auth throttling', () => {
   beforeAll(async () => {
     process.env.DATABASE_URL = url
     // Explicit, because another test file in this worker may have set it.
-    process.env.THROTTLE_DISABLED = 'false'
     await sql.unsafe('drop schema public cascade; create schema public;')
     await up(sql)
 

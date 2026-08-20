@@ -606,6 +606,20 @@ closed were chosen by what they guarded, not by how much they moved the
 figure: `AiService.stream` carries rule 8 and had no test, and the login form
 was the only way into the application and had none either.
 
+## Security
+
+`docs/SECURITY.md` states what is protected and — at greater length — what is
+not. The short version of the second list: the site's CSP allows inline
+script because Next's bootstrap is inline, there are no CSRF tokens because
+`SameSite=Lax` covers the attack, there is no password reset because there is
+no email provider, and tenant isolation rests on the guard rather than on
+row-level security.
+
+`TRUST_PROXY` defaults to `0`, meaning `X-Forwarded-For` is ignored entirely.
+Set it to the number of proxies actually in front of the API — `1` behind a
+single nginx. Trusting a proxy that is not there is worse than trusting none:
+a client could then claim any address and walk around a rate limit.
+
 ## Working agreement
 
 Read [CLAUDE.md](CLAUDE.md) first. Every task gets a spec from

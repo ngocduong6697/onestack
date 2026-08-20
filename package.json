@@ -21,7 +21,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "yarn format:check && yarn typecheck && yarn lint && yarn test:coverage && yarn build && yarn api:build",
-    "test:coverage": "yarn shared:build && yarn workspaces run test:coverage"
+    "test:coverage": "yarn shared:build && yarn workspaces run test:coverage",
+    "secrets:check": "node scripts/check-secrets.mjs",
+    "audit:deps": "yarn npm audit --severity high || yarn audit --level high"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

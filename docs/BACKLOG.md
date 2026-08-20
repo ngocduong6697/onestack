@@ -22,7 +22,7 @@ spec ([templates/SPEC.md](templates/SPEC.md)) and passes both review gates
 | TASK-014 | Audit logs               | cross-cutting    | TASK-002           | Done        |
 | TASK-015 | Dashboard                | 5 — Intelligence | TASK-012           | Done        |
 | TASK-016 | Testing                  | cross-cutting    | TASK-001           | Done        |
-| TASK-017 | Security hardening       | 6 — Production   | TASK-003           | Not started |
+| TASK-017 | Security hardening       | 6 — Production   | TASK-003           | Done        |
 | TASK-018 | Production deployment    | 6 — Production   | TASK-017           | Not started |
 
 ## Notes
