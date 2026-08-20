@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module'
 import { CustomersModule } from './customers/customers.module'
 import { OrgsModule } from './orgs/orgs.module'
 import { ProductsModule } from './products/products.module'
+import { SubscriptionsModule } from './subscriptions/subscriptions.module'
 import { UsersModule } from './users/users.module'
 import { HealthController } from './health/health.controller'
 import { ReadyController } from './health/ready.controller'
@@ -30,6 +31,7 @@ import { ReadyController } from './health/ready.controller'
     UsersModule,
     CustomersModule,
     ProductsModule,
+    SubscriptionsModule,
     AuthModule,
   ],
   controllers: [HealthController, ReadyController],

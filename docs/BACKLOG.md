@@ -13,7 +13,7 @@ spec ([templates/SPEC.md](templates/SPEC.md)) and passes both review gates
 | TASK-005 | User management          | 1 — Core         | TASK-004           | Done        |
 | TASK-006 | Customer CRM             | 2 — Business     | TASK-005           | Done        |
 | TASK-007 | Product management       | 2 — Business     | TASK-005           | Done        |
-| TASK-008 | Subscription             | 2 — Business     | TASK-006, TASK-007 | Not started |
+| TASK-008 | Subscription             | 2 — Business     | TASK-006, TASK-007 | Done        |
 | TASK-009 | AI provider abstraction  | 3 — AI           | TASK-004           | Not started |
 | TASK-010 | AI usage tracking        | 3 — AI           | TASK-009           | Not started |
 | TASK-011 | Automation engine        | 4 — Automation   | TASK-009           | Not started |

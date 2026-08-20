@@ -25,7 +25,15 @@ describe.skipIf(!url)('organizations and workspaces over HTTP', () => {
       .post('/auth/register')
       .send({ email, password: 'a sufficiently long password', name })
 
-    expect(response.status).toBe(201)
+    if (response.status !== 201) {
+      const server = app.getHttpServer() as { address: () => unknown }
+      throw new Error(
+        `register got ${response.status}` +
+          ` | server=${JSON.stringify(server.address())}` +
+          ` | headers=${JSON.stringify(response.headers)}` +
+          ` | text=${JSON.stringify(response.text)?.slice(0, 200)}`,
+      )
+    }
 
     const header = response.headers['set-cookie'] as unknown as string[]
     const cookie = header.find((entry) => entry.startsWith(SESSION_COOKIE))!

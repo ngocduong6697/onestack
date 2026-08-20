@@ -247,6 +247,42 @@ leaves its prices readable for exactly that reason.
 Amounts are integer minor units. Currency is a three-letter ISO 4217 code,
 uppercased on the way in so `usd` and `USD` cannot become two currencies.
 
+## Subscriptions
+
+A subscription joins a customer to a price. This is where the MRR figure comes
+from.
+
+```
+POST  .../subscriptions                 customerId, priceId, trialDays?
+GET   .../subscriptions?status=&customerId=&cursor=
+GET   .../subscriptions/summary         MRR and counts
+GET   .../subscriptions/{id}
+PATCH .../subscriptions/{id}            change price
+POST  .../subscriptions/{id}/cancel     { immediately?: false }
+POST  .../subscriptions/{id}/resume
+POST  .../subscriptions/{id}/renew
+```
+
+Statuses are `trialing`, `active`, `past_due` and `canceled`. Cancelling
+defaults to the end of the period — somebody who cancels keeps what they paid
+for, and can resume until it lapses. Renewal is where a scheduled cancellation
+actually takes effect.
+
+Renewing advances the period from **where the last one ended**, not from now,
+so a renewal that runs late does not quietly shorten the month.
+
+`price_id` is `restrict` rather than `cascade`: a price somebody is subscribed
+to cannot be deleted. TASK-007 already refuses to delete a priced product, so
+the guarantee holds from both sides.
+
+MRR normalises a yearly price to a twelfth of itself, ignores one-off prices,
+counts `active` and `trialing`, and is reported **per currency** rather than
+summed — adding USD to EUR gives a number that looks authoritative and means
+nothing.
+
+Money movement — invoices, proration, dunning — is TASK-013. Nothing here
+charges anybody.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |
