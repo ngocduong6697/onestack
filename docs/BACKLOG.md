@@ -16,7 +16,7 @@ spec ([templates/SPEC.md](templates/SPEC.md)) and passes both review gates
 | TASK-008 | Subscription             | 2 — Business     | TASK-006, TASK-007 | Done        |
 | TASK-009 | AI provider abstraction  | 3 — AI           | TASK-004           | Done        |
 | TASK-010 | AI usage tracking        | 3 — AI           | TASK-009           | Done        |
-| TASK-011 | Automation engine        | 4 — Automation   | TASK-009           | Not started |
+| TASK-011 | Automation engine        | 4 — Automation   | TASK-009           | Done        |
 | TASK-012 | Analytics                | 5 — Intelligence | TASK-008, TASK-010 | Not started |
 | TASK-013 | Billing                  | 2 — Business     | TASK-008           | Not started |
 | TASK-014 | Audit logs               | cross-cutting    | TASK-002           | Not started |

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { AiModule } from './ai/ai.module'
+import { AutomationModule } from './automation/automation.module'
 import { AuthModule } from './auth/auth.module'
 import { DomainExceptionFilter } from './common/domain-exception.filter'
 import { DatabaseHealth } from './database/database.health'
@@ -34,6 +35,7 @@ import { ReadyController } from './health/ready.controller'
     ProductsModule,
     SubscriptionsModule,
     AiModule,
+    AutomationModule,
     AuthModule,
   ],
   controllers: [HealthController, ReadyController],

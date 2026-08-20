@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
+import { AutomationWorker } from './automation/worker'
 import { enabledLogLevels } from './common/logger'
 import { loadEnv } from './config/env'
 
@@ -20,6 +21,13 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser())
   app.enableCors({ origin: env.CORS_ORIGINS, credentials: true })
   app.enableShutdownHooks()
+
+  /**
+   * Started here rather than on module init: every end-to-end test boots the
+   * application, and a worker that starts itself would have every suite
+   * quietly running background work against the test database.
+   */
+  app.get(AutomationWorker).start()
 
   await app.listen(env.API_PORT)
 

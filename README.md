@@ -358,6 +358,61 @@ the worse outcome, so `record` logs its own failure and returns.
 would top out near $2,147 and wrap silently. Totals are summed from the rows on
 read, so they cannot drift from them.
 
+## Automation
+
+Workflows are a list of steps with a trigger. They run manually or on a cron
+schedule, and every run is recorded step by step.
+
+```
+POST   /orgs/{orgId}/workspaces/{workspaceId}/workflows
+GET    .../workflows
+GET    .../workflows/{id}
+PATCH  .../workflows/{id}              including enable and disable
+DELETE .../workflows/{id}
+POST   .../workflows/{id}/run
+GET    .../workflows/{id}/runs
+GET    .../workflows/runs/{runId}      with its steps
+```
+
+Two actions: `ai.complete` and `http.request`. A step can use an earlier step's
+output as `{{steps.0.text}}`, and a reference to a step that has not run is
+refused **when the workflow is written** — finding that out at three in the
+morning is not the moment for it.
+
+### The queue
+
+Jobs live in Postgres and are claimed with `FOR UPDATE SKIP LOCKED`, so a
+second worker steps over a locked row rather than waiting for it. Without that
+the choice is serialising every worker behind one lock, or double-processing —
+and double-processing a paid AI call means paying twice. This is tested with
+two real connections, not by reasoning about the SQL.
+
+Failures retry with growing backoff — 30s, 2m, 8m — and go `dead` after the
+last attempt, a terminal state the claim query does not look at. A worker that
+dies holding a job leaves a lock that ages out after five minutes, and the job
+is reclaimed rather than stuck forever.
+
+The worker starts from `main.ts`, not on module init: every end-to-end test
+boots the application, and a worker that started itself would have every suite
+quietly running background work.
+
+### HTTP steps are the dangerous part
+
+A workflow is user input containing a URL, executed by the server — that is
+server-side request forgery unless the destination is checked. It is:
+
+- the **resolved address** is checked, not the hostname, because a hostname an
+  attacker controls can resolve wherever they like
+- loopback, RFC 1918, link-local (including `169.254.169.254`), carrier-grade
+  NAT, multicast and their IPv6 equivalents are all refused
+- redirects are not followed, because a redirect is a second destination that
+  has not been checked
+- response bodies are truncated before storage
+- the refusal says nothing about the topology it is protecting
+
+AI steps go through `AiService`, so they are recorded in `ai_requests` like
+every other call. Rule 8 has no exception for automation.
+
 ## Health
 
 | Endpoint      | Answers                  | Fails when                  |

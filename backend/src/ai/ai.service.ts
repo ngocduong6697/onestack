@@ -107,10 +107,19 @@ export class AiService {
     }
   }
 
-  /** Yields text, then the same accounting a non-streamed call would give. */
-  async *stream(input: CompletionRequestBody): AsyncGenerator<string, CompletionResponse> {
+  /**
+   * Yields text, then the same accounting a non-streamed call would give —
+   * including the record. TASK-010 recorded `complete` and left this path
+   * unrecorded, which would have made rule 8 depend on which method a caller
+   * happened to choose.
+   */
+  async *stream(
+    input: CompletionRequestBody,
+    caller: AiCaller,
+  ): AsyncGenerator<string, CompletionResponse> {
     const { model, provider } = this.resolve(input.model)
     const maxTokens = Math.min(input.maxTokens, model.maxOutputTokens)
+    const startedAt = Date.now()
 
     const generator = provider.stream({
       model: model.id,
@@ -119,15 +128,45 @@ export class AiService {
       maxTokens,
     })
 
-    let next = await generator.next()
+    let next
 
-    while (!next.done) {
-      yield next.value
+    try {
       next = await generator.next()
+
+      while (!next.done) {
+        yield next.value
+        next = await generator.next()
+      }
+    } catch (error) {
+      await this.usage.record({
+        workspaceId: caller.workspaceId,
+        userId: caller.userId,
+        provider: model.provider,
+        model: model.id,
+        status: 'failed',
+        usage: { inputTokens: 0, outputTokens: 0 },
+        costMicroUsd: 0,
+        durationMs: Date.now() - startedAt,
+        errorCode: errorCodeOf(error),
+      })
+
+      throw error
     }
 
     const result = next.value
     const cost = costOf(result.usage, model)
+
+    await this.usage.record({
+      workspaceId: caller.workspaceId,
+      userId: caller.userId,
+      provider: model.provider,
+      model: model.id,
+      status: 'succeeded',
+      usage: result.usage,
+      costMicroUsd: cost.microUsd,
+      durationMs: Date.now() - startedAt,
+      stopReason: result.stopReason,
+    })
 
     return {
       model: model.id,
